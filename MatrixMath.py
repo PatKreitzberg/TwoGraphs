@@ -5,8 +5,6 @@ from sympy.matrices.normalforms import smith_normal_form
 class PartialOneMatrix:
   def __init__(self, graph):
     self.matrix = self.build_matrix(graph)
-    print("Matrix:")
-    pprint(self.matrix)
 
   def __str__(self):
     out = ''

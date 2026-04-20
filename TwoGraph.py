@@ -22,7 +22,7 @@ class TwoGraph:
 
     # boundary function matrices
     self.partial_one = PartialOneMatrix(self)
-
+    print("Partial one matrix:", self.partial_one.matrix)
 
   # def image_basis(self, A: list[list[int]]) -> list[list[int]]:
   #     """
