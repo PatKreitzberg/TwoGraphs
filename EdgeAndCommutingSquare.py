@@ -24,6 +24,8 @@ class CommutingSquare:
   def __init__(self, ll, lr, rl, rr):
     self.lhs = (ll,lr)
     self.rhs = (rl,rr)
+    self.label = ll.edge_label + ' ' + lr.edge_label + ' ~ ' + rl.edge_label + ' ' + rr.edge_label
+    print("CS label", self.label)
 
     assert self.lhs[0].degree_index == self.rhs[1].degree_index
     assert self.lhs[1].degree_index == self.rhs[0].degree_index
@@ -33,6 +35,9 @@ class CommutingSquare:
       self.lhs[0].degree_index: [self.lhs[0], self.rhs[1]],
       self.rhs[0].degree_index: [self.lhs[1], self.rhs[0]],
     }
+
+  def __hash__(self):
+    return hash(self.label)
 
   def __str__(self):
     return str(self.lhs[0].edge_label) + " " +str(self.lhs[1].edge_label) + "~" + str(self.lhs[0].edge_label) + " " +str(self.lhs[1].edge_label)

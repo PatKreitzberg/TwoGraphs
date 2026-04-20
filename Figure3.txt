@@ -16,29 +16,3 @@ a e = e a
 c e = f a
 g c = b f
 b g = g b
-
-
-
-<edge> <source> <range>
-e:  u  to u
-a:  u  to u
-f:  u  to v
-c:  u  to v
-b:  v  to v
-g:  v  to v
-
-degree (1,0) e f g
-degree (0,1) a b c
-
-Factorization:
-a e = e a
-c e = f a
-g c = b f
-b g = g b
-
-
-ChatGPT:
-H0 = Z
-H1 = Z^5
-H2 = Z^2
-H3 = 0

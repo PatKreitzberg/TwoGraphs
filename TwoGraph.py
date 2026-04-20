@@ -1,4 +1,4 @@
-import re
+import re, math
 from collections import defaultdict as dd
 from fractions import Fraction
 from sympy import Matrix
@@ -15,65 +15,106 @@ class TwoGraph:
     self.commuting_squares = []
     self.edge_to_commuting_squares = dd(set)
     self.vertices = set()
+
+    # Parse graph
     self.parse(path)
-    self.edges = self.edge_label_to_edge.keys()
+
+    # To help calculate matrices
+    self.vertices = list(self.vertices)
+    self.edges = list(self.edge_label_to_edge.keys())
     self.vertex_to_index = {v:i for i,v in enumerate(self.vertices)}
     self.edge_to_index = {e:i for i,e in enumerate(self.edges)}
+    self.commuting_square_to_index = {cs:i for i,cs in enumerate(self.commuting_squares)}
 
     # boundary function matrices
+    self.calc_and_print_partial_one()
+
+  def calc_and_print_partial_one(self):
+    # PARTIAL ONE
     self.partial_one = PartialOneMatrix(self)
     print("Partial one matrix:", self.partial_one.matrix)
 
-  # def image_basis(self, A: list[list[int]]) -> list[list[int]]:
-  #     """
-  #     Return an integer basis for the image (column space) of matrix A.
+    A = self.partial_one.matrix
+    M = Matrix(A)
+    m, n = len(A), len(A[0])
+    img = self.image_basis(A)
+    ker = self.kernel_basis(A)
 
-  #     Parameters
-  #     ----------
-  #     A : 2D list of ints, shape (m, n).
+    print("Image basis:")
+    self.print_partial_span(img, self.vertices)
+    print("Ker basis:")
+    self.print_partial_span(ker, self.edges)
 
-  #     Returns
-  #     -------
-  #     List of column vectors (each a list of ints) forming a ℤ-basis for
-  #     im(A) ⊆ ℤ^m.  Returns an empty list when A is the zero matrix.
-  #     """
-  #     M = Matrix(A)
-  #     # HNF(M) is upper-triangular with zero columns dropped,
-  #     # so its columns are exactly a ℤ-basis for im(A).
-  #     H = hermite_normal_form(M)
-  #     basis = []
-  #     for j in range(H.cols):
-  #         col = [int(H[i, j]) for i in range(H.rows)]
-  #         if any(x != 0 for x in col):
-  #             basis.append(col)
-  #     return basis
+  def print_partial_span(self, part, items):
+    for span_vec in part:
+      span_vec_str = ''
+
+      for item_index in range(len(span_vec)):
+        if span_vec[item_index] != 0:
+          if span_vec[item_index] == 1:
+            span_vec_str += str(items[item_index])
+          elif span_vec[item_index] == -1:
+            span_vec_str += '-' + str(items[item_index])
+          else:
+            span_vec_str += str(span_vec[item_index]) + str(items[item_index])
+          span_vec_str += ' + '
+
+      if span_vec_str.endswith(' + '):
+        span_vec_str = span_vec_str[:-2]
+
+      print(span_vec_str)
 
 
-  # def kernel_basis(self, A: list[list[int]]) -> list[list[int]]:
-  #     """
-  #     Return an integer basis for the kernel (null space) of matrix A.
+  def image_basis(self, A: list[list[int]]) -> list[list[int]]:
+      """
+      Return an integer basis for the image (column space) of matrix A.
 
-  #     Parameters
-  #     ----------
-  #     A : 2D list of ints, shape (m, n).
+      Parameters
+      ----------
+      A : 2D list of ints, shape (m, n).
 
-  #     Returns
-  #     -------
-  #     List of column vectors (each a list of ints) forming a ℤ-basis for
-  #     ker(A) ⊆ ℤ^n.  Returns an empty list when the kernel is trivial.
-  #     """
-  #     M = Matrix(A)
-  #     rational_ns = M.nullspace()   # exact rational arithmetic
+      Returns
+      -------
+      List of column vectors (each a list of ints) forming a ℤ-basis for
+      im(A) ⊆ ℤ^m.  Returns an empty list when A is the zero matrix.
+      """
+      M = Matrix(A)
+      # HNF(M) is upper-triangular with zero columns dropped,
+      # so its columns are exactly a ℤ-basis for im(A).
+      H = hermite_normal_form(M)
+      basis = []
+      for j in range(H.cols):
+          col = [int(H[i, j]) for i in range(H.rows)]
+          if any(x != 0 for x in col):
+              basis.append(col)
+      return basis
 
-  #     basis = []
-  #     for v in rational_ns:
-  #         # Scale by LCM of denominators to clear fractions.
-  #         fracs = [Fraction(str(entry)) for entry in v]
-  #         denom_lcm = 1
-  #         for f in fracs:
-  #             denom_lcm = denom_lcm * f.denominator // math.gcd(denom_lcm, f.denominator)
-  #         basis.append([int(f * denom_lcm) for f in fracs])
-  #     return basis
+
+  def kernel_basis(self, A: list[list[int]]) -> list[list[int]]:
+      """
+      Return an integer basis for the kernel (null space) of matrix A.
+
+      Parameters
+      ----------
+      A : 2D list of ints, shape (m, n).
+
+      Returns
+      -------
+      List of column vectors (each a list of ints) forming a ℤ-basis for
+      ker(A) ⊆ ℤ^n.  Returns an empty list when the kernel is trivial.
+      """
+      M = Matrix(A)
+      rational_ns = M.nullspace()   # exact rational arithmetic
+
+      basis = []
+      for v in rational_ns:
+          # Scale by LCM of denominators to clear fractions.
+          fracs = [Fraction(str(entry)) for entry in v]
+          denom_lcm = 1
+          for f in fracs:
+              denom_lcm = denom_lcm * f.denominator // math.gcd(denom_lcm, f.denominator)
+          basis.append([int(f * denom_lcm) for f in fracs])
+      return basis
 
 
 
