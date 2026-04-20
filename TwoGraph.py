@@ -21,7 +21,7 @@ class TwoGraph:
 
     # To help calculate matrices
     self.vertices = list(self.vertices)
-    self.edges = list(self.edge_label_to_edge.keys())
+    self.edges = list(self.edge_label_to_edge.values())
     self.vertex_to_index = {v:i for i,v in enumerate(self.vertices)}
     self.edge_to_index = {e:i for i,e in enumerate(self.edges)}
     self.commuting_square_to_index = {cs:i for i,cs in enumerate(self.commuting_squares)}

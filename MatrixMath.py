@@ -23,9 +23,8 @@ class PartialOneMatrix:
     matrix = [[0]*ne for _ in range(nv)] # matrix of all zeros
 
     i = 1       # i = 1 for edges always
-    for e_lbl in graph.edges:
-      e = graph.edge_label_to_edge[e_lbl]
-      edge_index = graph.edge_to_index[e.edge_label]
+    for e in graph.edges:
+      edge_index = graph.edge_to_index[e]
       for ell in [0,1]:
         vertex_index = graph.vertex_to_index[e.F(i,ell)]
         matrix[vertex_index][edge_index] += self.increment(i,ell)
