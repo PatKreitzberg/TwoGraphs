@@ -6,7 +6,7 @@ class Edge:
     self.degree_index = None
     self.degree_tuple = None
   def __str__(self):
-    return str(self.edge_label) + ": " + str(self.s) + " -> " + str(self.r)
+    return self.edge_label
   def __eq__(self, other):
     return self.edge_label == other.edge_label
   def __hash__(self):
@@ -24,8 +24,7 @@ class CommutingSquare:
   def __init__(self, ll, lr, rl, rr):
     self.lhs = (ll,lr)
     self.rhs = (rl,rr)
-    self.label = ll.edge_label + ' ' + lr.edge_label + ' ~ ' + rl.edge_label + ' ' + rr.edge_label
-    print("CS label", self.label)
+    self.label = '(' + ll.edge_label + ' ' + lr.edge_label + ' ~ ' + rl.edge_label + ' ' + rr.edge_label + ')'
 
     assert self.lhs[0].degree_index == self.rhs[1].degree_index
     assert self.lhs[1].degree_index == self.rhs[0].degree_index
@@ -40,7 +39,7 @@ class CommutingSquare:
     return hash(self.label)
 
   def __str__(self):
-    return str(self.lhs[0].edge_label) + " " +str(self.lhs[1].edge_label) + "~" + str(self.lhs[0].edge_label) + " " +str(self.lhs[1].edge_label)
+    return '(' + str(self.lhs[0].edge_label) + " " +str(self.lhs[1].edge_label) + " ~ " + str(self.lhs[0].edge_label) + " " +str(self.lhs[1].edge_label)  + ')'
 
   def __getitem__(self, i):
     assert i < 4

@@ -1,7 +1,4 @@
 from TwoGraph import *
-from MatrixMath import *
-
-
 
 if __name__ == "__main__":
     import sys

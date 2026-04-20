@@ -9,5 +9,14 @@ b_2 u v
 2 b_1 b_2
 
 # commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>
-r_2 b_2 = b_2 r_1
-r_1 b_1 = b_1 r_2
+r_2 b_2 ~ b_2 r_1
+r_1 b_1 ~ b_1 r_2
+
+
+# notes
+Should have
+\ker\partial_1 = r_1, r_2, b_1 + b_2
+\img\partial_1 = u-v
+
+\ker\partial_2 = (r_2 b_2 ~ b_2 r_1) + (r_1 b_1 ~ b_1 r_2)
+\img\partial_2 = r_2 - r_1
