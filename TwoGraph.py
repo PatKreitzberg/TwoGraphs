@@ -4,53 +4,44 @@ from fractions import Fraction
 from sympy import Matrix
 from sympy.matrices.normalforms import hermite_normal_form
 
-from EdgeAndCommutingSquare import Edge, CommutingSquare
+from Edge import Edge
+from CommutingSquare import CommutingSquare
 from BoundaryFunctionMatrix import BoundaryFunctionMatrix
 
 class TwoGraph:
   def __init__(self, path):
-    self.edge_label_to_edge = {}
-    self.edge_to_degree = {}
-    self.degree_to_edges = dd(list)
-    self.commuting_squares = []
-    self.edge_to_commuting_squares = dd(set)
-    self.vertices = set()
-
     # Parse graph
-    self.parse(path)
+    vertices, edge_label_to_edge, commuting_squares = self.parse(path)
 
     # To help calculate matrices
-    self.vertices = list(self.vertices)
-    self.edges = list(self.edge_label_to_edge.values())
+    self.vertices = list(vertices)
+    self.edges = list(edge_label_to_edge.values())
+    self.commuting_squares = list(commuting_squares)
+
     self.vertex_to_index = {v:i for i,v in enumerate(self.vertices)}
-    self.edge_to_index = {e:i for i,e in enumerate(self.edges)}
+    self.edge_to_index  = {e:i for i,e in enumerate(self.edges)}
     self.commuting_square_to_index = {cs:i for i,cs in enumerate(self.commuting_squares)}
 
-    # HOMOLOGY
-
     # BOUNDARY FUNCTION MATRICES
-    print('\n\n')
-    print("#### Partial 1 #####")
-    partial_one = BoundaryFunctionMatrix(
+    self.d_1 = BoundaryFunctionMatrix(
       self,
       1, # r = 1 so going from edges to vertices
       self.edges,
       self.vertices,
       self.edge_to_index,
-      self.vertex_to_index
+      self.vertex_to_index,
+      print=True
     )
     print('\n\n')
-
-    print("#### Partial 2 #####")
-    partial_two = BoundaryFunctionMatrix(
+    self.d_2 = BoundaryFunctionMatrix(
       self,
       2, # r = 1 so going from edges to vertices
       self.commuting_squares,
       self.edges,
       self.commuting_square_to_index,
-      self.edge_to_index
+      self.edge_to_index,
+      print=True
     )
-
 
   def print_commuting_squares(self):
     # Print commuting squares
@@ -58,9 +49,12 @@ class TwoGraph:
         print("Commuting square:", cs)
         for i in [1,2]:
           for ell in [0,1]:
-            print(f"F_{i}^{ell} = {cs.F(i,ell).edge_label}" )
+            print(f"F_{i}^{ell} = {cs.F(i,ell).label}" )
 
   def parse(self, file_path):
+    edge_label_to_edge = {}
+    commuting_squares = set()
+    vertices = set()
     current_section = None
     with open(file_path, 'r') as f:
       for line in f:
@@ -80,45 +74,49 @@ class TwoGraph:
           elif 'commuting squares' in header:
             current_section = 'commuting_squares'
           elif 'notes' in header:
-            current_section = 'notes'
-          continue
+            return vertices, edge_label_to_edge, commuting_squares
+          continue # skip the line that contains '#'
 
         # Parse based on the current section
         if current_section == 'edges':
-          # Format: <label> <v1> <v2>
-          parts = line.split()
-          if len(parts) == 3:
-            e = parts[0]
-            s = parts[1]
-            r = parts[2]
-            edge = Edge(e,s,r)
-            self.vertices.add(s)
-            self.vertices.add(r)
-            assert not (e in self.edge_label_to_edge.keys())
-            self.edge_label_to_edge[e] = edge
-
+          vertices,edges = self.parse_edge(line, vertices, edge_label_to_edge)
         elif current_section == 'degrees':
-          parts = line.split()
-          if len(parts) > 1:
-            degree_index = int(parts[0])
-            for e in parts[1:]:
-              self.degree_to_edges[degree_index].append(self.edge_label_to_edge[e])
-              self.edge_label_to_edge[e].degree_index = degree_index
-
+          edge_label_to_edge = self.parse_degree(line, edge_label_to_edge)
         elif current_section == 'commuting_squares':
-         # Format: label_a label_b = label_c label_d
-         if '~' in line:
-           left_side, right_side = line.split('~')
-           lhs = tuple(left_side.strip().split())
-           rhs = tuple(right_side.strip().split())
+          # Format: label_a label_b = label_c label_d
+          if '~' in line:
+            commuting_squares = self.parse_commuting_square(line, commuting_squares, edge_label_to_edge)
+    return vertices, edge_label_to_edge, commuting_squares
 
-           left_edge_1 = self.edge_label_to_edge[lhs[0]]
-           left_edge_2 = self.edge_label_to_edge[lhs[1]]
-           right_edge_1 = self.edge_label_to_edge[rhs[0]]
-           right_edge_2 = self.edge_label_to_edge[rhs[1]]
+  def parse_edge(self, line, vertices, edge_label_to_edge):
+    # Format: <label> <v1> <v2>
+    parts = line.split()
+    if len(parts) == 3:
+      e,s,r = parts
+      edge = Edge(e,s,r)
+      vertices.add(s)
+      vertices.add(r)
+      assert not (e in edge_label_to_edge.keys())
+      edge_label_to_edge[e] = edge
+    return vertices, edge_label_to_edge
 
-           # ab ~ cd
-           commuting_square = CommutingSquare(left_edge_1, left_edge_2, right_edge_1, right_edge_2)
-           self.commuting_squares.append(commuting_square)
-           for e in [left_edge_1, left_edge_2, right_edge_1, right_edge_2]:
-             self.edge_to_commuting_squares[e].add(commuting_square)
+  def parse_degree(self, line, edge_label_to_edge):
+    parts = line.split()
+    if len(parts) > 1:
+      degree_index = int(parts[0])
+      for e in parts[1:]:
+        edge_label_to_edge[e].degree_index = degree_index
+    return edge_label_to_edge
+
+  def parse_commuting_square(self, line, commuting_squares, edge_label_to_edge):
+    left_side, right_side = line.split('~')
+    left_edge_1,  left_edge_2    = left_side.strip().split()
+    right_edge_1, right_edge_2 = right_side.strip().split()
+
+    # ab ~ cd
+    commuting_squares.add(CommutingSquare(
+      edge_label_to_edge[left_edge_1],
+      edge_label_to_edge[left_edge_2],
+      edge_label_to_edge[right_edge_1],
+      edge_label_to_edge[right_edge_2]))
+    return commuting_squares

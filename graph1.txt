@@ -20,3 +20,5 @@ Should have
 
 \ker\partial_2 = (r_2 b_2 ~ b_2 r_1) + (r_1 b_1 ~ b_1 r_2)
 \img\partial_2 = r_2 - r_1
+
+H1: 

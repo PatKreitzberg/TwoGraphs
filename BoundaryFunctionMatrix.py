@@ -4,19 +4,14 @@ from fractions import Fraction
 import math
 
 class BoundaryFunctionMatrix:
-  def __init__(self, graph, r, domain_items, range_items, domain_item_to_index, range_item_to_index):
+  def __init__(self, graph, r, domain_items, range_items, domain_item_to_index, range_item_to_index, print=False):
     self.r = r
     self.matrix = self.build_matrix(graph, domain_items, range_items, domain_item_to_index, range_item_to_index)
 
-    m, n = len(self.matrix), len(self.matrix[0])
     self.img = self.image_basis(self.matrix)
     self.ker = self.kernel_basis(self.matrix)
-    self.print_boundary_map_ker_and_img(self.matrix, domain_items, range_items)
-    print("self.img", self.img)
-    print("self.ker", self.ker)
-
-
-
+    if print:
+      self.print_boundary_map_ker_and_img(self.matrix, domain_items, range_items)
 
   def __str__(self):
     out = ''
@@ -49,7 +44,37 @@ class BoundaryFunctionMatrix:
           range_item_index = range_item_to_index[domain_item.F(i,ell)]
           matrix[range_item_index][domain_item_index] += self.increment(i,ell)
 
+          print(f"F_{i}^{ell}({domain_item}) = {domain_item.F(i,ell)}")
+
     return matrix
+
+  def image_basis(self, A: list[list[int]]) -> list[list[int]]:
+      M = Matrix(A)
+      # HNF(M) is upper-triangular with zero columns dropped,
+      # so its columns are exactly a ℤ-basis for im(A).
+      H = hermite_normal_form(M)
+      basis = []
+      for j in range(H.cols):
+          col = [int(H[i, j]) for i in range(H.rows)]
+          if any(x != 0 for x in col):
+              basis.append(col)
+      return basis
+
+
+  def kernel_basis(self, A: list[list[int]]) -> list[list[int]]:
+      M = Matrix(A)
+      rational_ns = M.nullspace()   # exact rational arithmetic
+
+      basis = []
+      for v in rational_ns:
+          # Scale by LCM of denominators to clear fractions.
+          fracs = [Fraction(str(entry)) for entry in v]
+          denom_lcm = 1
+          for f in fracs:
+              denom_lcm = denom_lcm * f.denominator // math.gcd(denom_lcm, f.denominator)
+          basis.append([int(f * denom_lcm) for f in fracs])
+      return basis
+
 
   def print_boundary_map_ker_and_img(self, boundary_function_matrix, domain_items, range_items):
     print("Image basis:")
@@ -73,58 +98,4 @@ class BoundaryFunctionMatrix:
 
       if span_vec_str.endswith(' + '):
         span_vec_str = span_vec_str[:-2]
-
       print(span_vec_str)
-
-
-  def image_basis(self, A: list[list[int]]) -> list[list[int]]:
-      """
-      Return an integer basis for the image (column space) of matrix A.
-
-      Parameters
-      ----------
-      A : 2D list of ints, shape (m, n).
-
-      Returns
-      -------
-      List of column vectors (each a list of ints) forming a ℤ-basis for
-      im(A) ⊆ ℤ^m.  Returns an empty list when A is the zero matrix.
-      """
-      M = Matrix(A)
-      # HNF(M) is upper-triangular with zero columns dropped,
-      # so its columns are exactly a ℤ-basis for im(A).
-      H = hermite_normal_form(M)
-      basis = []
-      for j in range(H.cols):
-          col = [int(H[i, j]) for i in range(H.rows)]
-          if any(x != 0 for x in col):
-              basis.append(col)
-      return basis
-
-
-  def kernel_basis(self, A: list[list[int]]) -> list[list[int]]:
-      """
-      Return an integer basis for the kernel (null space) of matrix A.
-
-      Parameters
-      ----------
-      A : 2D list of ints, shape (m, n).
-
-      Returns
-      -------
-      List of column vectors (each a list of ints) forming a ℤ-basis for
-      ker(A) ⊆ ℤ^n.  Returns an empty list when the kernel is trivial.
-      """
-      M = Matrix(A)
-      rational_ns = M.nullspace()   # exact rational arithmetic
-      print("CHECK rational:", rational_ns)
-
-      basis = []
-      for v in rational_ns:
-          # Scale by LCM of denominators to clear fractions.
-          fracs = [Fraction(str(entry)) for entry in v]
-          denom_lcm = 1
-          for f in fracs:
-              denom_lcm = denom_lcm * f.denominator // math.gcd(denom_lcm, f.denominator)
-          basis.append([int(f * denom_lcm) for f in fracs])
-      return basis
