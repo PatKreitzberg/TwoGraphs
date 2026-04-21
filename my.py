@@ -1,6 +1,7 @@
 from TwoGraph import *
 from ClaudeHomologyCalculator import *
 from GeminiHomologyCalculator import *
+from gemini import calculate_h1_hsnf
 
 if __name__ == "__main__":
     import sys
@@ -17,6 +18,11 @@ if __name__ == "__main__":
 
     print("d1", g.d_1.matrix)
     print("d2", g.d_2.matrix)
+
+    res = calculate_h1_hsnf(g.d_1.matrix, g.d_2.matrix)
+    print("Free rank:", res['free_rank'])
+    print("Torsion:", res['torsion'])
+    exit()
 
 
     result = claude_calculate_homology(g.d_1.matrix, g.d_2.matrix)
