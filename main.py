@@ -167,7 +167,7 @@ def partition_pairs(r_inv_e):
   S = set()
   for cs in commuting_squares_with_range_v:
     S.add( tuple(sorted(cs.r)) )
-
+  print("S", S)
 
   # 1. Map every element to its "parent" (initially itself)
   parent = {}
@@ -250,27 +250,28 @@ def calc_homology(g, plot, insplit=False):
     g.draw_graph()
 
 
-def calc_homology_and_insplit_homology(path, plot):
+def calc_homology_and_insplit_homology(path, vertex, plot):
   g = TwoGraph(path)
   calc_homology(g, plot)
 
   print("######## INSPLITTING ###########")
 
-  g_i = insplit(g, 'w')
+  g_i = insplit(g, vertex)
   calc_homology(g_i, plot, insplit=True)
 
 
 if __name__ == "__main__":
   print()
-  if len(sys.argv) < 2:
-    print("Usage: python two_graph.py <file> <file2>....")
+  if len(sys.argv) < 3:
+    print("Usage: python two_graph.py <file> <vertex> <plot = False>")
     sys.exit(1)
 
   plot = False
   if 'plot' in sys.argv:
    plot=True
 
+  print("sys.argv", sys.argv)
+  path = sys.argv[1]
+  v = sys.argv[2]
 
-  for path in sys.argv[1:]:
-    if path != 'plot':
-      calc_homology_and_insplit_homology(path, plot)
+  calc_homology_and_insplit_homology(path, v, plot)

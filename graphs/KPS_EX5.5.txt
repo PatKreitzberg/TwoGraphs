@@ -1,0 +1,20 @@
+# edges of the form <edge label> <source vertex> <range vertex>
+a x w
+b x w
+c v u
+d v u
+e x v
+f x v
+g w u
+h w u
+
+
+# degrees  of the form <degree> <edge> <edge>...
+1 e g f h
+2 a b c d
+
+# commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>
+c e ~ g b
+d e ~ g a
+c f ~ h b
+d f ~ h a

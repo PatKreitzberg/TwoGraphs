@@ -88,7 +88,7 @@ class TwoGraph:
         line = line.strip()
 
         # Skip empty lines
-        if not line:
+        if not line or '%' in line:
           continue
 
         # Detect section headers
