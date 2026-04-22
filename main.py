@@ -3,19 +3,17 @@ import sys
 from TwoGraph import *
 from calculate_h1 import calculate_h1_gemini, calculate_h1_claude
 
-def add_insplit_edges(g_edges, s_inv_e, v, new_vertices):
-  edges = set(g_edges) # list
+def add_insplit_source_edges(edges, s_inv_e, v, new_vertices):
   edges -= s_inv_e # set
   child_edge_function= {e:[e] for e in edges} # these edges are not modified at all
   new_edges = set()
-
-  print("WARNING: Do we redirect edges which now point to v^1, v^2 ????")
 
   # ADD NEW SOURCE EDGES
   for e in s_inv_e:
     child_edge_function[e] = list()
     for j in [0,1]:
-      label = e.label+"^" + str(j)
+      vertex_label = str(j+1)
+      label = e.label+"^" + vertex_label
       s = new_vertices[j]
       r = e.r
       new_e = Edge(label, s, r)
@@ -27,7 +25,7 @@ def add_insplit_edges(g_edges, s_inv_e, v, new_vertices):
 
   return edges, child_edge_function, new_edges
 
-def add_insplit_commuting_squares(v, old_commuting_squares, child_edge_function, new_edges):
+def add_insplit_commuting_squares(v, old_commuting_squares, child_edge_function, new_edges, old_edges):
   # we have af ~ eb if
   # 1. The parent squares in the original graph commute
   # 2. The range(af) = range(eb)
@@ -39,17 +37,30 @@ def add_insplit_commuting_squares(v, old_commuting_squares, child_edge_function,
   # and if the commuting square does not contain an edge with source
   # of v then the commuting square is unphased. Just the ede vertex is
   # changed.
+  forbidden_edges = new_edges | old_edges
+
   new_commuting_squares = set()
   for cs in old_commuting_squares:
     include = True
-    for new_edge in new_edges:
+    for new_edge in old_edges:
       if new_edge in cs:
         include = False
         continue
     if include:
       new_commuting_squares.add(cs)
 
-  commuting_squares_to_inspect = set().union(*[new_edge.commuting_squares for new_edge in new_edges])
+  #  print("Should not contain", [e.label for e in new_edges])
+  #  print("\n Surviving commuting squares")
+  #  for cs in new_commuting_squares:
+  #    a,b,c,d = cs[0],cs[1],cs[2],cs[3]
+  #    print(a.label, ':' , a.s, '->', a.r)
+  #    print(b.label, ':' , b.s, '->', b.r)
+  #    print(c.label, ':' , c.s, '->', c.r)
+  #    print(d.label, ':' , d.s, '->', d.r)
+  #    print()
+
+
+  commuting_squares_to_inspect = set().union(*[new_edge.commuting_squares for new_edge in old_edges])
 
   for cs in commuting_squares_to_inspect:
     (a,e),(f,b) = cs.lhs, cs.rhs
@@ -80,6 +91,30 @@ def add_insplit_vertices(v, vertices, new_vertices):
   vertices |= set(new_vertices)
   return vertices
 
+def add_insplit_edges(r_inv_e, s_inv_e, edges, new_vertices, v):
+  # ADD NEW RANGE EDGES (r(e) = v)
+  # Partitions r_inv_e
+  E1, E2 = partition_pairs(r_inv_e)
+
+  print("Partitions:", [e.label for e in E1], [e.label for e in E2])
+  assert len(E1) > 0
+  assert len(E2) > 0
+  for e in E1:
+    e.r = new_vertices[0]
+  for e in E2:
+    e.r = new_vertices[1]
+
+  for e in edges:
+    if e in E1:
+      e.r = new_vertices[0]
+    if e in E2:
+      e.r = new_vertices[1]
+
+  # add new source edges (s(e) = v)
+
+  edges, child_edge_function, new_edges = add_insplit_source_edges(edges, s_inv_e, v, new_vertices)
+  return edges, child_edge_function, new_edges
+
 def insplit(g, v):
   # g is a TwoGraph
   # v is a str
@@ -91,26 +126,29 @@ def insplit(g, v):
   vertices_as_set = add_insplit_vertices(v, g.vertices, new_vertices)
 
   # MODIFY EDGES
-
-  # ADD NEW RANGE EDGES (r(e) = v)
-  # Partitions r_inv_e
-  r_inv_e = set(g.range_inverse_of_vertex(v))
-  E1, E2 = partition_pairs(r_inv_e)
-  assert len(E1) > 0
-  assert len(E2) > 0
-  for e in E1:
-    e.r = new_vertices[0]
-  for e in E2:
-    e.r = new_vertices[1]
-
-
-  # add new source edges (s(e) = v)
   s_inv_e = set(g.source_inverse_of_vertex(v))
-  edges, child_edge_function, new_edges = add_insplit_edges(g.edges, s_inv_e, v, new_vertices)
-
+  edges, child_edge_function, new_edges = add_insplit_edges(set(g.range_inverse_of_vertex(v)), s_inv_e, set(g.edges), new_vertices, v)
 
   # COMMUTING SQUARES
-  commuting_squares = add_insplit_commuting_squares(v, g.commuting_squares, child_edge_function, new_edges)
+  commuting_squares = add_insplit_commuting_squares(v, g.commuting_squares, child_edge_function, new_edges, s_inv_e)
+
+  # print("Verts")
+  # for v in vertices_as_set:
+  #   print(v)
+
+  # print("\nEdges")
+  # for e in edges:
+  #   print(e.label, ':' , e.s, '->', e.r)
+
+  # print("\nCommuting squares")
+  # for cs in commuting_squares:
+  #   a,b,c,d = cs[0],cs[1],cs[2],cs[3]
+  #   print(cs)
+  #   print(a.label, ':' , a.s, '->', a.r)
+  #   print(b.label, ':' , b.s, '->', b.r)
+  #   print(c.label, ':' , c.s, '->', c.r)
+  #   print(d.label, ':' , d.s, '->', d.r)
+  #   print()
 
   g_insplit = TwoGraph({
     'vertices':list(vertices_as_set),
@@ -191,18 +229,11 @@ def partition_pairs(r_inv_e):
   return E1, E2
 
 
-def calc_homology_and_insplit_homology(path, plot):
-  g = TwoGraph(path)
-
-  print("######## INSPLITTING ###########")
-
-  g_i = insplit(g, 'v')
-  g_i.draw_graph()
-  return exit()
-
-
-
-  print("For graph:" + path)
+def calc_homology(g, plot, insplit=False):
+  if insplit:
+    print("For insplit of graph:" + path)
+  else:
+    print("For graph:" + path)
 
   res_gemini = calculate_h1_gemini(g.d_1.matrix, g.d_2.matrix)
   H1_gemini=res_gemini['result']
@@ -217,6 +248,17 @@ def calc_homology_and_insplit_homology(path, plot):
 
   if plot:
     g.draw_graph()
+
+
+def calc_homology_and_insplit_homology(path, plot):
+  g = TwoGraph(path)
+  calc_homology(g, plot)
+
+  print("######## INSPLITTING ###########")
+
+  g_i = insplit(g, 'w')
+  calc_homology(g_i, plot, insplit=True)
+
 
 if __name__ == "__main__":
   print()

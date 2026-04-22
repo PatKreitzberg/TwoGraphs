@@ -62,7 +62,6 @@ class BoundaryFunctionMatrix:
         domain_item_index = domain_item_to_index[domain_item]
         for ell in [0,1]:
           range_item_index = range_item_to_index[domain_item.F(i,ell)]
-          #print(domain_items[domain_item_index], range_items[range_item_index], f"F_{i}^{ell} = {range_items[range_item_to_index[domain_item.F(i,ell)]]}")
           matrix[range_item_index][domain_item_index] += self.increment(i,ell)
 
     return matrix

@@ -21,21 +21,17 @@ class TwoGraph:
 
     if type(load_from) is not None:
       if type(load_from) is str:
-        # Parse graph
         vertices, edge_label_to_edge, commuting_squares = self.parse(load_from)
 
       elif type(load_from) is dict:
-        print("WARNING: This 2-graph is created from another so the boundary matrices are not calculated automatically as we assume that the graph is going to be altered. call calculate_boundary_matrices")
+        #print("WARNING: This 2-graph is created from another so the boundary matrices are not calculated automatically as we assume that the graph is going to be altered. call calculate_boundary_matrices")
         vertices = load_from['vertices']
         edge_label_to_edge = load_from['edge_label_to_edge']
         commuting_squares = load_from['commuting_squares']
 
-        print("Edges")
-        for edge in edge_label_to_edge.values():
-          print(edge, edge.r, edge.s)
 
-      # as long as load_from is not None we can build boundary matrices
-      self.calculate_boundary_matrices(vertices, edge_label_to_edge, commuting_squares)
+      self.calculate_boundary_matrices(vertices, edge_label_to_edge, commuting_squares)      # as long as load_from is not None we can build boundary matrices
+
     else:
       # load_from is None so we do nothing; not sure why this would be the case
       pass
