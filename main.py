@@ -3,10 +3,9 @@ import sys
 from TwoGraph import *
 from calculate_h1 import calculate_h1_gemini, calculate_h1_claude
 
-def add_insplit_edges(g_edges, s_inv_e, v, new_vertices, par_function):
+def add_insplit_edges(g_edges, s_inv_e, v, new_vertices):
   edges = set(g_edges) # list
   edges -= s_inv_e # set
-  par_function = {e:e for e in edges}
   child_edge_function= {e:[e] for e in edges} # these edges are not modified at all
   new_edges = set()
 
@@ -24,12 +23,11 @@ def add_insplit_edges(g_edges, s_inv_e, v, new_vertices, par_function):
 
       edges.add(new_e)
       new_edges.add(new_e)
-      par_function[new_e] = e
       child_edge_function[e].append(new_e)
 
-  return edges, par_function, child_edge_function, new_edges
+  return edges, child_edge_function, new_edges
 
-def add_insplit_commuting_squares(v, old_commuting_squares, par_function, child_edge_function, new_edges):
+def add_insplit_commuting_squares(v, old_commuting_squares, child_edge_function, new_edges):
   # we have af ~ eb if
   # 1. The parent squares in the original graph commute
   # 2. The range(af) = range(eb)
@@ -62,7 +60,7 @@ def add_insplit_commuting_squares(v, old_commuting_squares, par_function, child_
                   if check_commuting_square_is_valid(a_, e_, f_, b_):
                     new_commuting_squares.add(CommutingSquare(a_, e_, f_, b_))
 
-  return list(new_commuting_squares), par_function
+  return list(new_commuting_squares)
 
 def check_commuting_square_is_valid(a, e, f, b):
   # a e ~ f b
@@ -76,30 +74,23 @@ def check_commuting_square_is_valid(a, e, f, b):
   return (a.s == e.r) and (a.r == f.r) and (e.s == b.s) and (b.r == f.s)
 
 
-def add_insplit_vertices(v, vertices, par_function, new_vertices):
+def add_insplit_vertices(v, vertices, new_vertices):
   vertices = set(vertices)
   vertices.remove(v)
   vertices |= set(new_vertices)
-  par_function = {u:u for u in vertices}
-  par_function[new_vertices[0]] = v
-  par_function[new_vertices[1]] = v
-
-  return vertices, par_function
+  return vertices
 
 def insplit(g, v):
   # g is a TwoGraph
   # v is a str
 
   # When we create this new graph order of edges and vertices don't matter
-  par_function = {u:u for u in g.vertices}
 
   # ADD NEW VERTICES
   new_vertices = [v+'^1', v+'^2']
-  vertices_as_set, par_function = add_insplit_vertices(v, g.vertices, par_function, new_vertices)
+  vertices_as_set = add_insplit_vertices(v, g.vertices, new_vertices)
 
-  # ADD NEW SOURCE EDGES (s(e) = v)
-  s_inv_e = set(g.source_inverse_of_vertex(v))
-  edges, par_function, child_edge_function, new_edges = add_insplit_edges(g.edges, s_inv_e, v, new_vertices, par_function)
+  # MODIFY EDGES
 
   # ADD NEW RANGE EDGES (r(e) = v)
   # Partitions r_inv_e
@@ -112,8 +103,14 @@ def insplit(g, v):
   for e in E2:
     e.r = new_vertices[1]
 
+
+  # add new source edges (s(e) = v)
+  s_inv_e = set(g.source_inverse_of_vertex(v))
+  edges, child_edge_function, new_edges = add_insplit_edges(g.edges, s_inv_e, v, new_vertices)
+
+
   # COMMUTING SQUARES
-  commuting_squares, par_function = add_insplit_commuting_squares(v, g.commuting_squares, par_function, child_edge_function, new_edges)
+  commuting_squares = add_insplit_commuting_squares(v, g.commuting_squares, child_edge_function, new_edges)
 
   g_insplit = TwoGraph({
     'vertices':list(vertices_as_set),
