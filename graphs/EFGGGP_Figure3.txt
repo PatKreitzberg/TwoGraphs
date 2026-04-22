@@ -12,7 +12,7 @@ g v v
 2 a b c
 
 # commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>
-a e = e a
-c e = f a
-g c = b f
-b g = g b
+a e ~ e a
+c e ~ f a
+g c ~ b f
+b g ~ g b

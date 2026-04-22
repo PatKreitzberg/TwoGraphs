@@ -3,16 +3,54 @@ from collections import defaultdict as dd
 from fractions import Fraction
 from sympy import Matrix
 from sympy.matrices.normalforms import hermite_normal_form
+import networkx as nx
+import matplotlib.pyplot as plt
+import numpy as np
+import matplotlib.patches as mpatches
+from matplotlib.patches import FancyArrowPatch
 
 from Edge import Edge
 from CommutingSquare import CommutingSquare
 from BoundaryFunctionMatrix import BoundaryFunctionMatrix
 
 class TwoGraph:
-  def __init__(self, path):
-    # Parse graph
-    vertices, edge_label_to_edge, commuting_squares = self.parse(path)
+  def __init__(self, load_from=None):
+    vertices, edge_label_to_edge, commuting_squares = None, None, None
+    self.vertex_to_range_commuting_square =  dd(set)   # the vertex is the source of the commuting square - for insplitting
+    self.vertex_to_source_commuting_square =  dd(set) # the vertex is the range of the commuting square - for insplitting
 
+    if type(load_from) is not None:
+      if type(load_from) is str:
+        # Parse graph
+        vertices, edge_label_to_edge, commuting_squares = self.parse(load_from)
+
+      elif type(load_from) is dict:
+        print("WARNING: This 2-graph is created from another so the boundary matrices are not calculated automatically as we assume that the graph is going to be altered. call calculate_boundary_matrices")
+        vertices = load_from['vertices']
+        edge_label_to_edge = load_from['edge_label_to_edge']
+        commuting_squares = load_from['commuting_squares']
+
+        print("Edges")
+        for edge in edge_label_to_edge.values():
+          print(edge, edge.r, edge.s)
+
+      # as long as load_from is not None we can build boundary matrices
+      self.calculate_boundary_matrices(vertices, edge_label_to_edge, commuting_squares)
+    else:
+      # load_from is None so we do nothing; not sure why this would be the case
+      pass
+
+  def range_inverse_of_vertex(self, v):
+    assert len(self.edges) > 0
+    assert v in self.vertices
+    return {e  for e in self.edges if e.r == v}
+
+  def source_inverse_of_vertex(self, v):
+    assert len(self.edges) > 0
+    assert v in self.vertices
+    return {e  for e in self.edges if e.s == v}
+
+  def calculate_boundary_matrices(self, vertices, edge_label_to_edge, commuting_squares):
     # To help calculate matrices
     self.vertices = list(vertices)
     self.edges = list(edge_label_to_edge.values())
@@ -30,9 +68,9 @@ class TwoGraph:
       self.vertices,
       self.edge_to_index,
       self.vertex_to_index,
-      print=True
+      calc_ker=False,
+      calc_img=False
     )
-    print('\n\n')
     self.d_2 = BoundaryFunctionMatrix(
       self,
       2, # r = 1 so going from edges to vertices
@@ -40,16 +78,9 @@ class TwoGraph:
       self.edges,
       self.commuting_square_to_index,
       self.edge_to_index,
-      print=True
+      calc_ker=True,
+      calc_img=False
     )
-
-  def print_commuting_squares(self):
-    # Print commuting squares
-      for cs in self.commuting_squares:
-        print("Commuting square:", cs)
-        for i in [1,2]:
-          for ell in [0,1]:
-            print(f"F_{i}^{ell} = {cs.F(i,ell).label}" )
 
   def parse(self, file_path):
     edge_label_to_edge = {}
@@ -110,13 +141,223 @@ class TwoGraph:
 
   def parse_commuting_square(self, line, commuting_squares, edge_label_to_edge):
     left_side, right_side = line.split('~')
-    left_edge_1,  left_edge_2    = left_side.strip().split()
-    right_edge_1, right_edge_2 = right_side.strip().split()
+    left_range_edge_label,  left_source_edge_label    = left_side.strip().split()
+    right_range_edge_label, right_source_edge_label = right_side.strip().split()
+
+    left_range_edge = edge_label_to_edge[left_range_edge_label]
+    left_source_edge = edge_label_to_edge[left_source_edge_label]
+    right_range_edge = edge_label_to_edge[right_range_edge_label]
+    right_source_edge = edge_label_to_edge[right_source_edge_label]
 
     # ab ~ cd
-    commuting_squares.add(CommutingSquare(
-      edge_label_to_edge[left_edge_1],
-      edge_label_to_edge[left_edge_2],
-      edge_label_to_edge[right_edge_1],
-      edge_label_to_edge[right_edge_2]))
+    cs = CommutingSquare(left_range_edge, left_source_edge, right_range_edge, right_source_edge)
+    commuting_squares.add(cs)
+
+    left_range_edge.range_of_commuting_squares.add(cs)
+    right_range_edge.range_of_commuting_squares.add(cs)
+
+    range_v = left_range_edge.r
+    source_v = left_source_edge.s
+
+    self.vertex_to_range_commuting_square[range_v].add(cs)
+    self.vertex_to_source_commuting_square[source_v].add(cs)
+
+    left_range_edge.commuting_squares.add(cs)
+    left_source_edge.commuting_squares.add(cs)
+    right_range_edge.commuting_squares.add(cs)
+    right_source_edge.commuting_squares.add(cs)
+
     return commuting_squares
+
+  def draw_graph(self):
+   g = nx.MultiDiGraph()
+   deg_index_to_color = [None, "red", "blue"] # since degree_index > 0
+   edge_list = [(e.s,e.r, {'color':deg_index_to_color[e.degree_index], 'label':e.label}) for e in self.edges]
+   g.add_edges_from(edge_list)
+   self.draw_multidigraph(g)
+
+  def draw_multidigraph(self, g):
+    fig, ax = plt.subplots(figsize=(9, 7))
+    ax.set_aspect("equal")
+    ax.axis("off")
+    fig.patch.set_facecolor("#1a1a2e")
+    ax.set_facecolor("#1a1a2e")
+
+    # --- Layout ---
+    pos = nx.spring_layout(g, seed=42)
+
+    # Spread nodes a bit more if only a few
+    if len(pos) <= 3:
+        keys = list(pos.keys())
+        if len(keys) == 1:
+            pos[keys[0]] = np.array([0.0, 0.0])
+        elif len(keys) == 2:
+            pos[keys[0]] = np.array([-0.5, 0.0])
+            pos[keys[1]] = np.array([0.5, 0.0])
+
+    # --- Draw edges ---
+    # Group edges by (u, v) pair so we can fan them out
+    edge_groups = {}
+    for u, v, data in g.edges(data=True):
+        key = (u, v)
+        edge_groups.setdefault(key, []).append(data)
+
+    label_positions = []  # [(x, y, label, color)]
+
+    for (u, v), edges in edge_groups.items():
+        n = len(edges)
+        is_loop = u == v
+
+        for i, data in enumerate(edges):
+            color = data.get("color", "white")
+            label = data.get("label", "")
+
+            if is_loop:
+                # Draw a self-loop as a circular arc above the node
+                x, y = pos[u]
+                angle_offset = (i - (n - 1) / 2) * 0.35  # fan loops sideways
+                loop_radius = 0.12 + i * 0.04
+
+                theta = np.linspace(0 + angle_offset, 2 * np.pi + angle_offset, 200)
+                lx = x + loop_radius * np.cos(theta)
+                ly = y + loop_radius * 1.5 * np.sin(theta) + loop_radius * 1.2
+
+                ax.plot(lx, ly, color=color, linewidth=1.8, zorder=2)
+
+                # Arrow at the end of the loop
+                dx = lx[-1] - lx[-2]
+                dy = ly[-1] - ly[-2]
+                ax.annotate(
+                    "",
+                    xy=(lx[-1], ly[-1]),
+                    xytext=(lx[-1] - dx * 3, ly[-1] - dy * 3),
+                    arrowprops=dict(
+                        arrowstyle="-|>",
+                        color=color,
+                        lw=1.5,
+                        mutation_scale=14,
+                    ),
+                    zorder=3,
+                )
+
+                # Label at the top of the loop
+                mid_idx = len(lx) // 2
+                label_positions.append((lx[mid_idx], ly[mid_idx] + 0.03, label, color))
+
+            else:
+                # Fan out multiple edges between same pair using arc curvature
+                # Spread: center edge is straight-ish, others curve left/right
+                spread = 0.25
+                if n == 1:
+                    rad = 0.15  # slight curve even for single edge
+                else:
+                    rad = -spread + i * (2 * spread / (n - 1)) if n > 1 else 0.0
+
+                src = pos[u]
+                dst = pos[v]
+
+                # Draw curved arrow
+                arrow = FancyArrowPatch(
+                    posA=src,
+                    posB=dst,
+                    connectionstyle=f"arc3,rad={rad:.3f}",
+                    arrowstyle="-|>",
+                    color=color,
+                    linewidth=1.8,
+                    mutation_scale=16,
+                    zorder=2,
+                    shrinkA=12,
+                    shrinkB=12,
+                )
+                ax.add_patch(arrow)
+
+                # Label at midpoint of the arc
+                mx = (src[0] + dst[0]) / 2
+                my = (src[1] + dst[1]) / 2
+                # Offset perpendicular to the edge
+                dx = dst[0] - src[0]
+                dy = dst[1] - src[1]
+                length = np.sqrt(dx**2 + dy**2) or 1
+                perp = np.array([-dy, dx]) / length
+                offset = perp * rad * 0.7
+                lx = mx + offset[0]
+                ly = my + offset[1]
+                label_positions.append((lx, ly, label, color))
+
+    # --- Draw nodes ---
+    node_radius = 0.01
+    for node, (x, y) in pos.items():
+        circle = plt.Circle(
+            (x, y),
+            node_radius,
+            color="#e0e0ff",
+            zorder=4,
+            linewidth=2,
+            ec="#aaaacc",
+        )
+        ax.add_patch(circle)
+        ax.text(
+            x,
+            y,
+            str(node),
+            ha="center",
+            va="center",
+            fontsize=14,
+            fontweight="bold",
+            color="#1a1a2e",
+            zorder=5,
+            fontfamily="monospace",
+        )
+
+    # --- Draw edge labels ---
+    for lx, ly, label, color in label_positions:
+        ax.text(
+            lx,
+            ly,
+            label,
+            ha="center",
+            va="center",
+            fontsize=9,
+            color=color,
+            fontfamily="monospace",
+            bbox=dict(
+                boxstyle="round,pad=0.2",
+                fc="#1a1a2e",
+                ec=color,
+                alpha=0.85,
+                linewidth=1,
+            ),
+            zorder=6,
+        )
+
+    # --- Legend for edge colors ---
+    seen_colors = {}
+    for _, _, data in g.edges(data=True):
+        c = data.get("color", "white")
+        if c not in seen_colors:
+            seen_colors[c] = c
+    legend_patches = [
+        mpatches.Patch(color=c, label=c) for c in seen_colors
+    ]
+    ax.legend(
+        handles=legend_patches,
+        loc="lower right",
+        framealpha=0.3,
+        facecolor="#1a1a2e",
+        edgecolor="#555577",
+        labelcolor="white",
+        fontsize=10,
+    )
+
+    ax.set_title(
+        "K-Graph",
+        color="#ccccee",
+        fontsize=14,
+        pad=12,
+        fontfamily="monospace",
+    )
+
+    plt.tight_layout()
+    plt.savefig("multidigraph.png", dpi=150, bbox_inches="tight", facecolor=fig.get_facecolor())
+    print("Saved to multidigraph.png")
+    plt.show()

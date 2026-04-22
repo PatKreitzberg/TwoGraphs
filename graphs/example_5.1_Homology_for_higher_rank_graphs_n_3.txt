@@ -1,17 +1,21 @@
 # edges of the form <edge label> <source vertex> <range vertex>
-e u u
-a u u
-f u v1
-c u v1
-g1 v1 v2
-b1 v1 v2
-b2 v2 v2
-g2 v2 v2
+r_1 u u 
+r_2 v v 
+b_1 v u 
+b_2 v u
+b_3 v u
 
 # degrees  of the form <degree> <edge> <edge>...
-1 e f g1 g2
-2 a b1 b2 c
+1 r_1 r_2
+2 b_1 b_2 b_3
 
 # commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>
+b_1 r_2 ~ r_1 b_2
+b_2 r_2 ~ r_1 b_3
+b_3 r_2 ~ r_1 b_1
 
-
+# notes
+Should have
+H0 = Z
+H1 = Z + Z/3Z
+H2 = {0}

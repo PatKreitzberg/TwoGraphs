@@ -4,14 +4,34 @@ from fractions import Fraction
 import math
 
 class BoundaryFunctionMatrix:
-  def __init__(self, graph, r, domain_items, range_items, domain_item_to_index, range_item_to_index, print=False):
+  def __init__(self, graph, r, domain_items, range_items, domain_item_to_index, range_item_to_index, calc_ker=False, calc_img=False):
     self.r = r
     self.matrix = self.build_matrix(graph, domain_items, range_items, domain_item_to_index, range_item_to_index)
 
-    self.img = self.image_basis(self.matrix)
-    self.ker = self.kernel_basis(self.matrix)
-    if print:
-      self.print_boundary_map_ker_and_img(self.matrix, domain_items, range_items)
+    self.img = None
+    self.img_str = None
+
+    self.ker = None
+    self.ker_str = None
+
+    if calc_img:
+      self.calc_img()
+      self.img_str = self.partial_span_as_str(self.img, range_items)
+
+    if calc_ker:
+      self.calc_ker()
+      self.ker_str_items = self.partial_span_as_str(self.ker, domain_items)
+      self.ker_str = f"Z^{len(self.ker)}"
+
+  def calc_ker(self):
+    if self.ker is None:
+      self.ker = self.kernel_basis(self.matrix)
+    return self.ker
+
+  def calc_img(self):
+    if self.img is None:
+      self.img = self.image_basis(self.matrix)
+    return self.img
 
   def __str__(self):
     out = ''
@@ -42,9 +62,8 @@ class BoundaryFunctionMatrix:
         domain_item_index = domain_item_to_index[domain_item]
         for ell in [0,1]:
           range_item_index = range_item_to_index[domain_item.F(i,ell)]
+          #print(domain_items[domain_item_index], range_items[range_item_index], f"F_{i}^{ell} = {range_items[range_item_to_index[domain_item.F(i,ell)]]}")
           matrix[range_item_index][domain_item_index] += self.increment(i,ell)
-
-          print(f"F_{i}^{ell}({domain_item}) = {domain_item.F(i,ell)}")
 
     return matrix
 
@@ -75,14 +94,8 @@ class BoundaryFunctionMatrix:
           basis.append([int(f * denom_lcm) for f in fracs])
       return basis
 
-
-  def print_boundary_map_ker_and_img(self, boundary_function_matrix, domain_items, range_items):
-    print("Image basis:")
-    self.print_partial_span(self.img, range_items)
-    print("Ker basis:")
-    self.print_partial_span(self.ker, domain_items)
-
-  def print_partial_span(self, part, items):
+  def partial_span_as_str(self, part, items):
+    out = ''
     for span_vec in part:
       span_vec_str = ''
 
@@ -98,4 +111,10 @@ class BoundaryFunctionMatrix:
 
       if span_vec_str.endswith(' + '):
         span_vec_str = span_vec_str[:-2]
-      print(span_vec_str)
+      #print(span_vec_str)
+      out += span_vec_str + ', '
+    if out == "":
+      return "{0}"
+    if out.endswith(', '):
+      out = out[:-2].strip()
+    return out
