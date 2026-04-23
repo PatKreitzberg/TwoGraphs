@@ -1,6 +1,7 @@
 import sys
 
-from TwoGraph import *
+from TwoGraph import TwoGraph
+from InsplitTwoGraph import InsplitTwoGraph
 from calculate_h1 import calculate_h1_gemini, calculate_h1_claude
 
 def add_insplit_source_edges(edges, s_inv_e, v, new_vertices):
@@ -256,7 +257,7 @@ def calc_homology_and_insplit_homology(path, vertex, plot):
 
   print("######## INSPLITTING ###########")
 
-  g_i = insplit(g, vertex)
+  g_i = InsplitTwoGraph(g, vertex)
   calc_homology(g_i, plot, insplit=True)
 
 
