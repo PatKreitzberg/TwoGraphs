@@ -1,5 +1,5 @@
 class Edge:
-  def __init__(self, label, s, r):
+  def __init__(self, label, s, r, degree=None):
     # label is string name of edge
     # s is source vertex
     # r is range vertex
@@ -7,7 +7,7 @@ class Edge:
     self.label = label
     self.s = s # source of edge
     self.r = r # range of edge
-    self.degree_index = None
+    self.degree_index = degree
     self.range_of_commuting_squares = set()
     self.commuting_squares = set()
 
