@@ -7,15 +7,22 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     # n is number of vertices
     # z is an upper limit on number of edges in graph between any two (maybe non-distinct) vertices
 
-    # Vertices are just basic integers {0,1,...,n-1}
-    vertices = {i for i in range(n)}
-
+    R_degree = 1
+    B_degree = 2
     R,B = self.generate_adjacency_matrices(n, z)
 
-    R_path_matrix = PathMatrix(R, 'r')
-    B_path_matrix = PathMatrix(B, 'b')
-    commuting_squares = self.get_commuting_squares(R_path_matrix, B_path_matrix)
+    R_path_matrix = PathMatrix(R, R_degree)
+    B_path_matrix = PathMatrix(B, B_degree)
 
+    edges = R_path_matrix.edges + B_path_matrix.edges
+    commuting_squares = self.get_commuting_squares(R_path_matrix, B_path_matrix)
+    print("Okay creating TwoGraph now")
+    load_from = {
+      'vertices':[i for i in range(n)],   # Vertices are just basic integers 0,1,...,n-1
+      'edge_label_to_edge':{edge.label:edge for edge in edges},
+      'commuting_squares':commuting_squares
+    }
+    super().__init__(load_from)
 
   def generate_adjacency_matrices(self, n, z):
     ''''
@@ -47,44 +54,17 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     # Of the form ('r', i, j), ('b', u, v)  with
     # source edge being ('b',u,v)
     # range edge being ('r',i,j)
-    print("R")
-    print(R)
-    print()
-    print("B")
-    print(B)
-    print()
-
-    print("R*B")
     RB_paths_matrix = R*B
-
-    print("B*R")
     BR_paths_matrix = B*R
     commuting_squares = []
-
-    print("Red blue paths")
-    print(RB_paths_matrix)
-    print()
-    print("Blue red paths")
-    print(BR_paths_matrix)
-    print()
-
 
     n = R.n
     for i in range(n):
       for j in range(n):
-
        assert len(RB_paths_matrix[i][j]) == len(BR_paths_matrix[i][j])
+
        for RB_path, BR_path  in zip(RB_paths_matrix[i][j], BR_paths_matrix[i][j]):
          s1,r1 = RB_path
-         s2,r2 = RB_path
-
-         # Make into Edge objects
-
-
-         cs = CommutingSquare(r1,s1, r2, s2)
-         commuting_squares.append(cs)
-         print("Red blue path", s1, "->", r1)
-         print("Blue red path", s2, "->", r2)
-         print(commuting_squares[-1])
-         print()
+         s2,r2 = BR_path
+         commuting_squares.append(CommutingSquare(r1,s1, r2, s2))
     return commuting_squares

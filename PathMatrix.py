@@ -9,6 +9,7 @@ class PathMatrix:
     '''
     self.n = len(A)
     self.path_matrix =  self.get_path_matrix(A, degree)
+    self.edges = self.get_edges()
 
   def __getitem__(self, i):
     return self.path_matrix[i]
@@ -55,6 +56,9 @@ class PathMatrix:
                 # (degree, source vertex, range vertex, edge key)
                 # Edge key is just if there are m-many 'r' edges between 0,1 we get
                 # ('r',0,1,0), ('r',0,1,1), ..., ('r',0,1, m)
+                print("A_edge", A_edge)
+                print("B_edge", B_edge)
+                print()
                 res[Ar][Bc].append((A_edge, B_edge))
 
     return res
@@ -71,8 +75,6 @@ class PathMatrix:
     s = row
     r = col
     degree = degree
-
-
     '''
 
     # Edge of the form
@@ -87,11 +89,9 @@ class PathMatrix:
     ]
     return path_matrix
 
-
-   # path_matrix =  [
-   #   [
-   #     ((degree, r,c), A[r][c]) for c in range(self.n)
-   # ]
-   #   for r in range(self.n)
-   # ]
-   # return path_matrix
+  def get_edges(self):
+    edges = []
+    for r in self.path_matrix:
+      for eset in r:
+        edges += eset
+    return edges
