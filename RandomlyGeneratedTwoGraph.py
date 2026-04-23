@@ -1,5 +1,6 @@
 from TwoGraph import TwoGraph
 from PathMatrix import PathMatrix
+from CommutingSquare import CommutingSquare
 
 class RandomlyGeneratedTwoGraph(TwoGraph):
   def __init__(self, n, z):
@@ -71,8 +72,19 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     n = R.n
     for i in range(n):
       for j in range(n):
-        for RB_path, BR_path  in zip(RB_paths_matrix[i][j], BR_paths_matrix[i][j]):
 
-          print("Red blue path", RB_path)
-          print("Blue red path", BR_path)
-          print()
+       assert len(RB_paths_matrix[i][j]) == len(BR_paths_matrix[i][j])
+       for RB_path, BR_path  in zip(RB_paths_matrix[i][j], BR_paths_matrix[i][j]):
+         s1,r1 = RB_path
+         s2,r2 = RB_path
+
+         # Make into Edge objects
+
+
+         cs = CommutingSquare(r1,s1, r2, s2)
+         commuting_squares.append(cs)
+         print("Red blue path", s1, "->", r1)
+         print("Blue red path", s2, "->", r2)
+         print(commuting_squares[-1])
+         print()
+    return commuting_squares

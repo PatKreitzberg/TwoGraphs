@@ -1,3 +1,5 @@
+from Edge import Edge
+
 class PathMatrix:
   def __init__(self, A, color):
     '''
@@ -6,7 +8,6 @@ class PathMatrix:
     This allows us to get the path
     '''
     self.n = len(A)
-    print("Got matrix", A)
     self.path_matrix =  self.get_path_matrix(A, color)
 
   def __getitem__(self, i):
@@ -54,9 +55,7 @@ class PathMatrix:
                 # (color, source vertex, range vertex, edge key)
                 # Edge key is just if there are m-many 'r' edges between 0,1 we get
                 # ('r',0,1,0), ('r',0,1,1), ..., ('r',0,1, m)
-                print("A_edge", A_edge)
-                print("B_edge", B_edge)
-
+                res[Ar][Bc].append((A_edge, B_edge))
 
     return res
 
