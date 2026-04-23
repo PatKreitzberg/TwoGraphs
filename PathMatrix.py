@@ -6,24 +6,8 @@ class PathMatrix:
     This allows us to get the path
     '''
     self.n = len(A)
+    print("Got matrix", A)
     self.path_matrix =  self.get_path_matrix(A, color)
-
-
-  def get_path_matrix(self, A, color):
-    '''
-    A: Adjacency matrix for DIRECTED GRAPH
-    Returns a matrix from A where each entry is (color, (i,j), A_ij)
-    This allows us to get the path
-
-
-    (color, (i,j), number of edges from i -> j)
-    '''
-    return [
-      [
-        (color, (r,c), A[r][c]) for r in range(n)
-      ]
-      for c in range(n)
-    ]
 
   def __getitem__(self, i):
     return self.path_matrix[i]
@@ -63,10 +47,14 @@ class PathMatrix:
       for Bc in range(self.n):
         paths = []
         for ell in range(self.n):
-          (Acolor, (Ai,Aj), Ak) = self.path_matrix[Ar][ell]  # Move across row in A
-          (Bcolor, (Bi,Bj), Bk) = other.path_matrix[ell][Bc] # Move down column in B
+          A_edge, Ak = self.path_matrix[Ar][ell]  # Move across row in A
+          B_edge, Bk = other.path_matrix[ell][Bc] # Move down column in B
 
-          # (Ai, Aj) is an edge from v_i to v_j in the A matrix
+          if (Ak*Bk) > 0:
+            print("A edge", A_edge, Ar, ell)
+            print("B edge", B_edge, ell, Bc)
+
+          # edges are of the form (Color, i, j) which is a colored edge from vertex i to vertex j
           # Ak is number of such edges (Ak = 0 if no edges exist)
 
           # Need to add new path for Ak*Bk because there are Ak many
@@ -75,37 +63,27 @@ class PathMatrix:
 
           # if there are no paths from vi to vj in A then Ak = 0 so there are none appended to res[Ar][Bc]
 
-          color_of_paths = (Acolor, Bcolor)
-          for pi in range(Ak*Bk):
-            path = (Ai, Aj, Bi, Bj)
-            index = pi
-            res[Ar][Bc].append( (color_of_paths, path, index) )
+          path = (A_edge, B_edge)
+          res[Ar][Bc] += [
+            (path, path_index) for path_index in range(Ak*Bk)
+          ]
+
     return res
 
 
-R = [[1,0],
-       [0,1]]
-B = [[0,2],  # two eges from 0 to 1
-       [0,0]]  # A[row][column]
-
-n = len(R)
-
-
-#print(R)
-print()
-pR = PathMatrix(R, 'r')
-pB = PathMatrix(B, 'b')
-res = pR*pB
-
-st = ''
-for r in res:
-  for i in range(len(r)):
-    for p in r[i]:
-      if p[-1] > 0:
-        print(p)
+  def get_path_matrix(self, A, color):
+    '''
+    A: Adjacency matrix for DIRECTED GRAPH
+    Returns a matrix from A where each entry is (color, (i,j), A_ij)
+    This allows us to get the path
 
 
-print('pR')
-print(pR)
-print('pB')
-print(pB)
+    (color, (i,j), number of edges from i -> j)
+    '''
+    path_matrix =  [
+      [
+        ((color, r,c), A[r][c]) for c in range(self.n)
+    ]
+      for r in range(self.n)
+    ]
+    return path_matrix
