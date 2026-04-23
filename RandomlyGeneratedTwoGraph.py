@@ -68,18 +68,11 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     print()
 
 
-
     n = R.n
     for i in range(n):
       for j in range(n):
         for RB_path, BR_path  in zip(RB_paths_matrix[i][j], BR_paths_matrix[i][j]):
+
           print("Red blue path", RB_path)
           print("Blue red path", BR_path)
           print()
-
-          # Which is source?
-
-          source_red = None
-          range_red = None
-          source_blue = None
-          range_blue = None

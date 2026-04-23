@@ -47,26 +47,16 @@ class PathMatrix:
       for Bc in range(self.n):
         paths = []
         for ell in range(self.n):
-          A_edge, Ak = self.path_matrix[Ar][ell]  # Move across row in A
-          B_edge, Bk = other.path_matrix[ell][Bc] # Move down column in B
+          if (len(self.path_matrix[Ar][ell]) > 0) and (len(other.path_matrix[ell][Bc]) > 0):
+            for A_edge in self.path_matrix[Ar][ell]:
+              for B_edge in other.path_matrix[ell][Bc]:
+                # Edges are of the form
+                # (color, source vertex, range vertex, edge key)
+                # Edge key is just if there are m-many 'r' edges between 0,1 we get
+                # ('r',0,1,0), ('r',0,1,1), ..., ('r',0,1, m)
+                print("A_edge", A_edge)
+                print("B_edge", B_edge)
 
-          if (Ak*Bk) > 0:
-            print("A edge", A_edge, Ar, ell)
-            print("B edge", B_edge, ell, Bc)
-
-          # edges are of the form (Color, i, j) which is a colored edge from vertex i to vertex j
-          # Ak is number of such edges (Ak = 0 if no edges exist)
-
-          # Need to add new path for Ak*Bk because there are Ak many
-          # edges from Ai to Aj and Bk many edges from Bi to Bj. So
-          # there are Ak*Bk many paths from Ai to Bj.
-
-          # if there are no paths from vi to vj in A then Ak = 0 so there are none appended to res[Ar][Bc]
-
-          path = (A_edge, B_edge)
-          res[Ar][Bc] += [
-            (path, path_index) for path_index in range(Ak*Bk)
-          ]
 
     return res
 
@@ -82,8 +72,20 @@ class PathMatrix:
     '''
     path_matrix =  [
       [
-        ((color, r,c), A[r][c]) for c in range(self.n)
+        [
+          (color, (r,c), edge_key) for edge_key in range(A[r][c])
+        ]
+        for c in range(self.n)
     ]
       for r in range(self.n)
     ]
     return path_matrix
+
+
+   # path_matrix =  [
+   #   [
+   #     ((color, r,c), A[r][c]) for c in range(self.n)
+   # ]
+   #   for r in range(self.n)
+   # ]
+   # return path_matrix
