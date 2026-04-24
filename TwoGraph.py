@@ -16,19 +16,20 @@ from BoundaryFunctionMatrix import BoundaryFunctionMatrix
 class TwoGraph:
   def __init__(self, load_from=None):
     vertices, edge_label_to_edge, commuting_squares = None, None, None
-    self.vertex_to_range_commuting_square =  dd(set)   # the vertex is the source of the commuting square - for insplitting
-    self.vertex_to_source_commuting_square =  dd(set) # the vertex is the range of the commuting square - for insplitting
+    # the vertex is the source of the commuting square - for insplitting
+    self.vertex_to_range_commuting_square =  dd(set)
+
+    # the vertex is the range of the commuting square - for insplitting
+    self.vertex_to_source_commuting_square =  dd(set)
 
     if type(load_from) is not None:
       if type(load_from) is str:
         vertices, edge_label_to_edge, commuting_squares = self.parse(load_from)
 
       elif type(load_from) is dict:
-        #print("WARNING: This 2-graph is created from another so the boundary matrices are not calculated automatically as we assume that the graph is going to be altered. call calculate_boundary_matrices")
         vertices = load_from['vertices']
         edge_label_to_edge = load_from['edge_label_to_edge']
         commuting_squares = load_from['commuting_squares']
-
 
       self.calculate_boundary_matrices(vertices, edge_label_to_edge, commuting_squares)      # as long as load_from is not None we can build boundary matrices
 
@@ -130,9 +131,9 @@ class TwoGraph:
   def parse_degree(self, line, edge_label_to_edge):
     parts = line.split()
     if len(parts) > 1:
-      degree_index = int(parts[0])
+      degree = int(parts[0])
       for e in parts[1:]:
-        edge_label_to_edge[e].degree_index = degree_index
+        edge_label_to_edge[e].degree = degree
     return edge_label_to_edge
 
   def parse_commuting_square(self, line, commuting_squares, edge_label_to_edge):
@@ -162,15 +163,14 @@ class TwoGraph:
     left_source_edge.commuting_squares.add(cs)
     right_range_edge.commuting_squares.add(cs)
     right_source_edge.commuting_squares.add(cs)
-
     return commuting_squares
 
   def draw_graph(self):
-   g = nx.MultiDiGraph()
-   deg_index_to_color = [None, "red", "blue"] # since degree_index > 0
-   edge_list = [(e.s,e.r, {'color':deg_index_to_color[e.degree_index], 'label':e.label}) for e in self.edges]
-   g.add_edges_from(edge_list)
-   self.draw_multidigraph(g)
+    g = nx.MultiDiGraph()
+    deg_index_to_color = [None, "red", "blue"] # since degree > 0
+    edge_list = [(e.s,e.r, {'color':deg_index_to_color[e.degree], 'label':e.label}) for e in self.edges]
+    g.add_edges_from(edge_list)
+    self.draw_multidigraph(g)
 
   def draw_multidigraph(self, g):
     fig, ax = plt.subplots(figsize=(9, 7))

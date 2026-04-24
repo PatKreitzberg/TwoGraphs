@@ -18,7 +18,7 @@ def add_insplit_source_edges(edges, s_inv_e, v, new_vertices):
       s = new_vertices[j]
       r = e.r
       new_e = Edge(label, s, r)
-      new_e.degree_index = e.degree_index
+      new_e.degree = e.degree
 
       edges.add(new_e)
       new_edges.add(new_e)

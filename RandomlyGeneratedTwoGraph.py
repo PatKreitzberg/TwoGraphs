@@ -16,7 +16,9 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     R_degree = 1
     B_degree = 2
     attempts = 0
+
     while True:
+      # Make sure R, B truly commute.
       R,B = self.generate_adjacency_matrices()
       if sum(sum(np.dot(R, B) - np.dot(B, R))) == 0:
         break
@@ -27,19 +29,21 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     R_path_matrix = PathMatrix(R, R_degree)
     B_path_matrix = PathMatrix(B, B_degree)
 
-    edges = R_path_matrix.edges + B_path_matrix.edges
     commuting_squares = self.get_commuting_squares(R_path_matrix, B_path_matrix)
 
     if commuting_squares is None:
       return
 
-    print("Okay creating TwoGraph now")
+    print("Okay creating TwoGraph from Random graph now")
     load_from = {
       'vertices':[i for i in range(n)],   # Vertices are just basic integers 0,1,...,n-1
-      'edge_label_to_edge':{edge.label:edge for edge in edges},
+      'edge_label_to_edge':{edge.label:edge for edge in R_path_matrix.edges + B_path_matrix.edges},
       'commuting_squares':commuting_squares
     }
     super().__init__(load_from)
+
+
+
 
   def generate_adjacency_matrices(self):
     ''''
@@ -85,6 +89,13 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
 
     Need at least four source edges! Then can always insplit. So need a vertex that has degree >= 4
     '''
+    print("R")
+    print(R.adj_matrix)
+    print()
+    print("B")
+    print(B.adj_matrix)
+    print()
+
    # Finding a vertex with at least four in-edges
     for v in range(self.n):
       total_degree = 0
@@ -94,6 +105,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       if total_degree >= 4:
         self.can_insplit = True
         self.insplit_v = v
+        print(f"At vertex {self.insplit_v} degree {total_degree}")
         break
 
     # If we can't insplit don't bother
@@ -105,15 +117,15 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     # Need to partition paths by source edge and the degree of that source edge
 
     for cs in range_vertex_to_commuting_square[self.insplit_v]:
-      s1,r1 = cs.lhs
-      s2,r2 = cs.rhs
+      s1,r1 = cs.path1
+      s2,r2 = cs.path2
 
-      if s1.degree_index == 1:
-        degree_1_source_edge_to_paths[s1].add(cs.lhs)
-        degree_2_source_edge_to_paths[s2].add(cs.rhs)
+      if s1.degree == 1:
+        degree_1_source_edge_to_paths[s1].add(cs.path1)
+        degree_2_source_edge_to_paths[s2].add(cs.path2)
       else:
-        degree_2_source_edge_to_paths[s1].add(cs.lhs)
-        degree_1_source_edge_to_paths[s2].add(cs.rhs)
+        degree_2_source_edge_to_paths[s1].add(cs.path1)
+        degree_1_source_edge_to_paths[s2].add(cs.path2)
 
     X = [(len(paths), se) for se,paths in degree_1_source_edge_to_paths.items()]
     Y = [(len(paths), se) for se,paths in degree_2_source_edge_to_paths.items()]
@@ -146,10 +158,8 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       R[i][j] is a list of paths of length 1 from v_i to v_j
       path of the form
     '''
-
     print("WARNING: enforce we can insplit at vertex")
     print("WARNING: Change to sets instead of lists otherwise commuting squares will always be boring I think?")
-
 
     # Of the form ('r', i, j), ('b', u, v)  with
     # source edge being ('b',u,v)
@@ -164,8 +174,11 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       for col in range(self.n): # range vertex
         assert len(RB_paths_matrix[row][col]) == len(BR_paths_matrix[row][col])
         for RB_path, BR_path  in zip(RB_paths_matrix[row][col], BR_paths_matrix[row][col]):
+
+
           s1,r1 = RB_path
           s2,r2 = BR_path
+          print('CHECK Source and Range are correct order RB path', CommutingSquare(r1,s1, r2, s2))
 
           range_vertex = r1.r
           range_vertex_to_commuting_square[range_vertex].add(CommutingSquare(r1,s1, r2, s2))

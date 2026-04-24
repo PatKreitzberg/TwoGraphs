@@ -7,7 +7,7 @@ class Edge:
     self.label = label
     self.s = s # source of edge
     self.r = r # range of edge
-    self.degree_index = degree
+    self.degree = degree
     self.range_of_commuting_squares = set()
     self.commuting_squares = set()
 

@@ -10,6 +10,7 @@ class InsplitTwoGraph(TwoGraph):
     #Add vertices to graph
     new_vertices = [str(v)+'^1', str(v)+'^2']
     vertices_as_set = self.add_insplit_vertices(v, g.vertices, new_vertices)
+    self.v_as_s = vertices_as_set
 
     # MODIFY EDGES
     s_inv_e = set(g.source_inverse_of_vertex(v))
@@ -54,7 +55,6 @@ class InsplitTwoGraph(TwoGraph):
     # 2. The range(af) = range(eb)
     # 3. The source(af) = source(eb)
 
-
     # Commuting squares which do not have edges whose source is v in
     # original graph. Insplitting preserves range of commuting squares
     # and if the commuting square does not contain an edge with source
@@ -72,21 +72,10 @@ class InsplitTwoGraph(TwoGraph):
       if include:
         new_commuting_squares.add(cs)
 
-    #  print("Should not contain", [e.label for e in new_edges])
-    #  print("\n Surviving commuting squares")
-    #  for cs in new_commuting_squares:
-    #    a,b,c,d = cs[0],cs[1],cs[2],cs[3]
-    #    print(a.label, ':' , a.s, '->', a.r)
-    #    print(b.label, ':' , b.s, '->', b.r)
-    #    print(c.label, ':' , c.s, '->', c.r)
-    #    print(d.label, ':' , d.s, '->', d.r)
-    #    print()
-
-
     commuting_squares_to_inspect = set().union(*[new_edge.commuting_squares for new_edge in old_edges])
 
     for cs in commuting_squares_to_inspect:
-      (a,e),(f,b) = cs.lhs, cs.rhs
+      (a,e),(f,b) = cs.path1, cs.path2
       for a_ in child_edge_function[a]:
           for e_ in child_edge_function[e]:
               for f_ in child_edge_function[f]:
@@ -115,14 +104,34 @@ class InsplitTwoGraph(TwoGraph):
     return vertices
 
   def add_insplit_edges(self, r_inv_e, s_inv_e, edges, new_vertices, v):
+    '''
+    We have a specific vertex v
+    v is replaced with v^0, v^1
+    The edges which have v as a source must be partitioned into E1 and E2
+    Edges in E1 have
+    '''
+
     # ADD NEW RANGE EDGES (r(e) = v)
     # Partitions r_inv_e
+
     E1, E2 = self.partition_pairs(r_inv_e)
 
     print("Partitions:", [e.label for e in E1], [e.label for e in E2])
+
     if len(E1) == 0 or len(E2)==0:
-      print("r inv e", r_inv_e)
-      print("s inv e", s_inv_e)
+      print("Vertex", v)
+      print("r inv e", len(r_inv_e))
+      print("s inv e", len(s_inv_e))
+      A = [[0 for _ in range(len(self.v_as_s))] for _ in range(len(self.v_as_s))]
+      for edge in edges:
+        print("edge", edge.degree_index)
+        A[edge.s][edge.r] += 1
+      out = ''
+      for r in A:
+        for c in r:
+          out += str(c) + ' '
+        out += '\n'
+      print('\n',out)
 
     assert len(E1) > 0
     assert len(E2) > 0

@@ -4,10 +4,14 @@ class PathMatrix:
   def __init__(self, A, degree):
     '''
     A: Adjacency matrix for DIRECTED GRAPH
-    Returns a matrix from A where each entry is (degree, (i,j), A_ij)
-    This allows us to get the path
+    Returns a matrix from A with A(i,j) is a list of edges from vertex i to vertex j
+    Vertices are integers {0,1,...,n-1}
+    Edge labels are:
+      E(deg=<degree>, (source vertex, range vertex), #=<edge key>)
+      edge key: there may be multiple edges between source and range of this degree so we separate using this number
     '''
     self.n = len(A)
+    self.degree = degree
     self.adj_matrix = A
     self.path_matrix =  self.get_path_matrix(A, degree)
     self.edges = self.get_edges()
@@ -61,6 +65,8 @@ class PathMatrix:
 
     return res
 
+  def edge_label(self, source_vertex, range_vertex, degree, edge_number):
+    return 'E(deg=' + str(degree) + ', (' + str(source_vertex) + ', ' + str(range_vertex) + ')#=' + str(edge_number)
 
   def get_path_matrix(self, A, degree):
     '''
@@ -79,7 +85,7 @@ class PathMatrix:
     path_matrix =  [
       [
         [
-          Edge('E('+str(row)+','+str(col)+')_'+str(edge_key), row, col, degree=degree) for edge_key in range(A[row][col])
+          Edge(self.edge_label(row, col, self.degree, edge_key), row, col, degree=degree) for edge_key in range(A[row][col])
         ]
         for col in range(self.n)
     ]
