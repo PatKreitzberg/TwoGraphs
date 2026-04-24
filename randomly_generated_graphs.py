@@ -47,7 +47,7 @@ def calc_homology_and_insplit_homology(n, z):
 
   print("######## INSPLITTING ###########")
 
-  g_i = InsplitTwoGraph(g, g.insplit_v)
+  g_i = InsplitTwoGraph(g, g.insplit_v, E1=g.E1, E2=g.E2)
   calc_homology(g_i, insplit=True)
 
 if __name__ == "__main__":

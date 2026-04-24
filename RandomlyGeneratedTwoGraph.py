@@ -13,8 +13,8 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     self.can_insplit = False
     self.n = n
     self.z = z
-    R_degree = 1
-    B_degree = 2
+    self.R_degree = 1
+    self.B_degree = 2
     attempts = 0
 
     while True:
@@ -29,7 +29,9 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     R_path_matrix = PathMatrix(R, R_degree)
     B_path_matrix = PathMatrix(B, B_degree)
 
-    commuting_squares = self.get_commuting_squares(R_path_matrix, B_path_matrix)
+    commuting_squares, E1, E2 = self.get_commuting_squares(R_path_matrix, B_path_matrix)
+    self.E1 = E1
+    self.E2 = E2
 
     if commuting_squares is None:
       return
@@ -83,15 +85,13 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
 
   def find_vertex_with_incoming_degree_at_least_four(self, R, B):
     # Finding a vertex with at least four in-edges
-    for v in range(self.n):
-      total_degree = 0
-      for row in range(self.n):
-        total_degree += len(R[row][v])
-        total_degree += len(B[row][v])
-      if total_degree >= 4:
+    for range_vertex in range(self.n):
+      total_edges_into_range_vertex = 0
+      for source_vertex in range(self.n):
+        total_edges_into_range_vertex += len(R[source_vertex][range_vertex]) + len(B[source_vertex][range_vertex])
+      if total_edges_into_range_vertex >= 4:
         self.can_insplit = True
-        return v
-
+        return range_vertex
     return None
 
   def partition_for_insplit(self, R,B,range_vertex_to_commuting_square):
@@ -101,6 +101,15 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     Partition them then create commuting squares
 
     Need at least four source edges! Then can always insplit. So need a vertex that has degree >= 4
+
+    Procedure:
+    Take all edges with range r
+    Separate into degree 1 and degree 2
+    Need to get partitions E1, E2 such that
+    1. E1 and E2 have as many degree 1 edges as degree 2 edges
+    2. E1, E2 are nonempty, no shared elements, partittion range edges of v
+
+    Make commuting edges where r1 s1 ~ r2 s2 => r1, r2 both in E1 or both in E2 !
     '''
     self.insplit_v = self.find_vertex_with_incoming_degree_at_least_four(R,B)
 
@@ -108,43 +117,31 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     if not self.can_insplit:
       return None
 
-    degree_1_source_edge_to_paths = dd(set)
-    degree_2_source_edge_to_paths = dd(set)
-    # Need to partition paths by source edge and the degree of that source edge
+    degree_1_range_edge_to_paths = dd(set)
+    degree_2_range_edge_to_paths = dd(set)
+    # Need to partition paths by range edge and the degree of that range edge
 
     for cs in range_vertex_to_commuting_square[self.insplit_v]:
-      s1,r1 = cs.path1
-      s2,r2 = cs.path2
+      r1, s1 = cs.path1
+      r2, s2 = cs.path2
 
-      if s1.degree == 1:
-        degree_1_source_edge_to_paths[s1].add(cs.path1)
-        degree_2_source_edge_to_paths[s2].add(cs.path2)
+      if r1.degree == 1:
+        degree_1_range_edge_to_paths[r1].add(cs.path1)
+        degree_2_range_edge_to_paths[r2].add(cs.path2)
       else:
-        degree_2_source_edge_to_paths[s1].add(cs.path1)
-        degree_1_source_edge_to_paths[s2].add(cs.path2)
+        degree_2_range_edge_to_paths[r1].add(cs.path1)
+        degree_1_range_edge_to_paths[r2].add(cs.path2)
 
-    X = [(len(paths), se) for se,paths in degree_1_source_edge_to_paths.items()]
-    Y = [(len(paths), se) for se,paths in degree_2_source_edge_to_paths.items()]
+    X = [(len(paths), re) for re,paths in degree_1_range_edge_to_paths.items()]
+    Y = [(len(paths), re) for re,paths in degree_2_range_edge_to_paths.items()]
 
     equal_subset = find_first_equal_subset(X,Y)
-    sub_X = equal_subset['subset_A']
-    sub_Y = equal_subset['subset_B']
+    E1_degree_1_edges = [edge for _,edge in equal_subset['subset_A']]
+    E1_degree_2_edges = [edge for _,edge in equal_subset['subset_B']]
 
-    # sub_X and sub_Y will create a partition of source edges that allow us to insplit
-    all_paths_degree_1 = set.union(*[degree_1_source_edge_to_paths[se] for _,se in sub_X])
-    all_paths_degree_2 = set.union(*[degree_2_source_edge_to_paths[se] for _,se in sub_Y])
-    # these commuting squares guarantees we can insplit
-    all_commuting_squares = set()
-    for p1,p2 in zip(all_paths_degree_1, all_paths_degree_2):
-      all_commuting_squares.add(CommutingSquare(*p1, *p2))
-
-    # Add all other commuting squares
-    for range_vertex, commuting_squares in range_vertex_to_commuting_square.items():
-      if range_vertex == self.insplit_v:
-        continue
-      all_commuting_squares |= commuting_squares
-
-    return all_commuting_squares
+    E2_degree_1_edges = [edge for _,edge in X if edge not in E1_degree_1_edges]
+    E2_degree_2_edges = [edge for _,edge in Y if edge not in E1_degree_2_edges]
+    return (E1_degree_1_edges, E1_degree_2_edges), (E2_degree_1_edges, E2_degree_2_edges)
 
   def get_commuting_squares(self, R, B):
     '''
@@ -170,13 +167,46 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       for col in range(self.n): # range vertex
         assert len(RB_paths_matrix[row][col]) == len(BR_paths_matrix[row][col])
         for RB_path, BR_path  in zip(RB_paths_matrix[row][col], BR_paths_matrix[row][col]):
-
-
           s1,r1 = RB_path
           s2,r2 = BR_path
-          print('CHECK Source and Range are correct order RB path', CommutingSquare(r1,s1, r2, s2))
 
-          range_vertex = r1.r
-          range_vertex_to_commuting_square[range_vertex].add(CommutingSquare(r1,s1, r2, s2))
+          assert s1.s == s2.s
+          assert r1.r == r2.r
 
-    return self.partition_for_insplit(R, B, range_vertex_to_commuting_square)
+          range_vertex_to_commuting_square[r1.r].add(CommutingSquare(r1,s1, r2, s2))
+
+    (E1_red_edges, E1_blue_edges), (E2_red_edges, E2_blue_edges) = self.partition_for_insplit(R, B, range_vertex_to_commuting_square)
+
+    all_commuting_squares = set()
+    all_commuting_squares |= self.get_commuting_squares_for_partition(E1_red_edges, E1_blue_edges, R, B)
+    all_commuting_squares |= self.get_commuting_squares_for_partition(E2_red_edges, E2_blue_edges, R, B)
+
+    for range_vertex, commuting_squares in range_vertex_to_commuting_square.items():
+      if range_vertex == self.insplit_v:
+        continue
+      all_commuting_squares |= commuting_squares
+
+    E1 = E1_red_edges + E1_blue_edges
+    E2 = E2_red_edges + E2_blue_edges
+    return commuting_squares, E1, E2
+
+
+  def get_commuting_squares_for_partition(self, E_red_edges, E_blue_edges, R, B):
+    red_blue_paths = set()
+    for red_edge in E_red_edges: # Red edges
+      # it is the range edge so we need to look at the other matrix to get source edge
+      for source_vertex in len(B.n):
+        for blue_edge in B[source_vertex][red_edge.s]:
+          red_blue_paths.add((red_edge, blue_edge))
+
+    blue_red_paths = set()
+    for blue_edge in E_blue_edges:
+      for source_vertex in len(R.n):
+        for red_edge in R[source_vertex][blue_edge.s]:
+          blue_red_paths.add((blue_edge, red_edge))
+    commuting_squares = set()
+
+    assert len(red_blue_paths) == len(blue_red_paths)
+    for (r1,s1), (r2,s2) in zip(red_blue_paths, blue_red_paths):
+      commuting_squares.add(CommutingSquare(r1,s1,r2,s2))
+    return commuting_squares
