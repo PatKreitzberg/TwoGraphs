@@ -8,7 +8,7 @@ class InsplitTwoGraph(TwoGraph):
     # v is the vertex at which we insplit
 
     #Add vertices to graph
-    new_vertices = [v+'^1', v+'^2']
+    new_vertices = [str(v)+'^1', str(v)+'^2']
     vertices_as_set = self.add_insplit_vertices(v, g.vertices, new_vertices)
 
     # MODIFY EDGES
@@ -120,8 +120,13 @@ class InsplitTwoGraph(TwoGraph):
     E1, E2 = self.partition_pairs(r_inv_e)
 
     print("Partitions:", [e.label for e in E1], [e.label for e in E2])
+    if len(E1) == 0 or len(E2)==0:
+      print("r inv e", r_inv_e)
+      print("s inv e", s_inv_e)
+
     assert len(E1) > 0
     assert len(E2) > 0
+
     for e in E1:
       e.r = new_vertices[0]
     for e in E2:

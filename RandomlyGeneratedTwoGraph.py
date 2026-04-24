@@ -10,6 +10,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
   def __init__(self, n, z):
     # n is number of vertices
     # z is an upper limit on number of edges in graph between any two (maybe non-distinct) vertices
+    self.can_insplit = False
     self.n = n
     self.z = z
     R_degree = 1
@@ -73,23 +74,6 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     k = max(1, 1 - min_a)
 
     B = A + k * np.eye(self.n, dtype=int)
-
-    b_print = ''
-    for r in B:
-      for c in r:
-        b_print += str(c) + ' '
-      b_print += '\n'
-    print("B\n",b_print)
-    a_print = ''
-    for r in A:
-      for c in r:
-        a_print += str(c) + ' '
-      a_print += '\n'
-    print("A\n",a_print)
-
-    # A = [[1,0],[0,1]]
-    # B = [[0,2],[0,0]]
-    # self.n = len(A)
     return A, B
 
 
@@ -101,25 +85,12 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
 
     Need at least four source edges! Then can always insplit. So need a vertex that has degree >= 4
     '''
-
-    print("R")
-    print(R)
-    print()
-    print("B")
-    print(B)
-    print()
-
    # Finding a vertex with at least four in-edges
-    self.can_insplit = False
     for v in range(self.n):
       total_degree = 0
-      td = 0
       for row in range(self.n):
         total_degree += len(R[row][v])
         total_degree += len(B[row][v])
-        td += R.adj_matrix[row][v]
-        td += B.adj_matrix[row][v]
-
       if total_degree >= 4:
         self.can_insplit = True
         self.insplit_v = v
@@ -127,11 +98,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
 
     # If we can't insplit don't bother
     if not self.can_insplit:
-
       return None
-
-    all_commuting_squares = set()
-    self.insplit_vertex = None
 
     degree_1_source_edge_to_paths = dd(set)
     degree_2_source_edge_to_paths = dd(set)
@@ -155,14 +122,16 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     sub_X = equal_subset['subset_A']
     sub_Y = equal_subset['subset_B']
 
+    all_commuting_squares = set()
     # sub_X and sub_Y will create a partition of source edges that allow us to insplit
     all_paths_degree_1 = set.union(*[degree_1_source_edge_to_paths[se] for _,se in sub_X])
     all_paths_degree_2 = set.union(*[degree_2_source_edge_to_paths[se] for _,se in sub_Y])
+    # these commuting squares guarantees we can insplit
     for p1,p2 in zip(all_paths_degree_1, all_paths_degree_2):
       all_commuting_squares.add(CommutingSquare(*p1, *p2))
 
     # Add all other commuting squares
-    for range_vertex, commuting_squares in range_vertex_to_commuting_square.item():
+    for range_vertex, commuting_squares in range_vertex_to_commuting_square.items():
       if range_vertex == self.insplit_v:
         continue
       all_commuting_squares |= commuting_squares
