@@ -8,6 +8,7 @@ class PathMatrix:
     This allows us to get the path
     '''
     self.n = len(A)
+    self.adj_matrix = A
     self.path_matrix =  self.get_path_matrix(A, degree)
     self.edges = self.get_edges()
 
@@ -21,7 +22,7 @@ class PathMatrix:
     out = 'Path matrix:\n'
     for row in self.path_matrix:
       for col in row:
-        out += str(col) + ' '
+        out += str([e.label for e in col]) + ' '
       out += '\n'
     return out
 
@@ -56,9 +57,6 @@ class PathMatrix:
                 # (degree, source vertex, range vertex, edge key)
                 # Edge key is just if there are m-many 'r' edges between 0,1 we get
                 # ('r',0,1,0), ('r',0,1,1), ..., ('r',0,1, m)
-                print("A_edge", A_edge)
-                print("B_edge", B_edge)
-                print()
                 res[Ar][Bc].append((A_edge, B_edge))
 
     return res
