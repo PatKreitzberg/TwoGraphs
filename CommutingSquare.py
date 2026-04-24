@@ -14,8 +14,6 @@ class CommutingSquare:
     self.r2 = r2
     self.label = '(' + r1.label + ' ' + s1.label + ' ~ ' + r2.label + ' ' + s2.label + ')'
 
-
-
     assert self.path1[0].degree == self.path2[1].degree
     assert self.path1[1].degree == self.path2[0].degree
 

@@ -3,7 +3,7 @@ from Edge import Edge
 from CommutingSquare import CommutingSquare
 
 class InsplitTwoGraph(TwoGraph):
-  def __init__(self, g, v):
+  def __init__(self, g, v, E1=None, E2=None):
     # og_graph is the graph we are going to insplit
     # v is the vertex at which we insplit
 
@@ -14,10 +14,10 @@ class InsplitTwoGraph(TwoGraph):
 
     # MODIFY EDGES
     s_inv_e = set(g.source_inverse_of_vertex(v))
-    edges, child_edge_function, new_edges = self.add_insplit_edges(set(g.range_inverse_of_vertex(v)), s_inv_e, set(g.edges), new_vertices, v)
+    edges, edge_to_children_edges = self.add_insplit_edges(set(g.range_inverse_of_vertex(v)), s_inv_e, set(g.edges), new_vertices, v, E1, E2)
 
     # COMMUTING SQUARES
-    commuting_squares = self.add_insplit_commuting_squares(v, g.commuting_squares, child_edge_function, new_edges, s_inv_e)
+    commuting_squares = self.add_insplit_commuting_squares(v, g.commuting_squares, edge_to_children_edges)
 
     load_from = {
       'vertices':list(vertices_as_set),
@@ -28,58 +28,50 @@ class InsplitTwoGraph(TwoGraph):
 
 
   def add_insplit_source_edges(self, edges, s_inv_e, v, new_vertices):
-    edges -= s_inv_e # set
-    child_edge_function= {e:[e] for e in edges} # these edges are not modified at all
-    new_edges = set()
+    # Make function:
+    #  e -> [e^1, e^2] if s(e) = v
+    #  else e -> e
+
+    edges -= s_inv_e
+    edge_to_children_edges= {e:[e] for e in edges} # these edges are not modified at all
 
     # ADD NEW SOURCE EDGES
     for e in s_inv_e:
-      child_edge_function[e] = list()
+      edge_to_children_edges[e] = list()
+
       for j in [0,1]:
-        vertex_label = str(j+1)
-        label = e.label+"^" + vertex_label
-        s = new_vertices[j]
+        # range remains the same
         r = e.r
-        new_e = Edge(label, s, r)
-        new_e.degree_index = e.degree_index
+
+        # make new edges e^1, e^2
+        vertex_label = str(j+1)
+        label = e.label + "^" + vertex_label
+        s = new_vertices[j]
+
+        new_e = Edge(label, s, r, degree=e.degree)
 
         edges.add(new_e)
-        new_edges.add(new_e)
-        child_edge_function[e].append(new_e)
+        edge_to_children_edges[e].append(new_e)
 
-    return edges, child_edge_function, new_edges
+    return edges, edge_to_children_edges
 
-  def add_insplit_commuting_squares(self, v, old_commuting_squares, child_edge_function, new_edges, old_edges):
+
+  def add_insplit_commuting_squares(self, v, old_commuting_squares, edge_to_children_edges):
     # we have af ~ eb if
     # 1. The parent squares in the original graph commute
     # 2. The range(af) = range(eb)
     # 3. The source(af) = source(eb)
 
-    # Commuting squares which do not have edges whose source is v in
-    # original graph. Insplitting preserves range of commuting squares
-    # and if the commuting square does not contain an edge with source
-    # of v then the commuting square is unphased. Just the ede vertex is
-    # changed.
-    forbidden_edges = new_edges | old_edges
+    # If an edge was not involved in insplit then
 
     new_commuting_squares = set()
+
     for cs in old_commuting_squares:
-      include = True
-      for new_edge in old_edges:
-        if new_edge in cs:
-          include = False
-          continue
-      if include:
-        new_commuting_squares.add(cs)
-
-    commuting_squares_to_inspect = set().union(*[new_edge.commuting_squares for new_edge in old_edges])
-
-    for cs in commuting_squares_to_inspect:
       (a,e),(f,b) = cs.path1, cs.path2
-      for a_ in child_edge_function[a]:
-          for e_ in child_edge_function[e]:
-              for f_ in child_edge_function[f]:
-                  for b_ in child_edge_function[b]:
+      for a_ in edge_to_children_edges[a]:
+          for e_ in edge_to_children_edges[e]:
+              for f_ in edge_to_children_edges[f]:
+                  for b_ in edge_to_children_edges[b]:
                     if self.check_commuting_square_is_valid(a_, e_, f_, b_):
                       new_commuting_squares.add(CommutingSquare(a_, e_, f_, b_))
 
@@ -98,59 +90,51 @@ class InsplitTwoGraph(TwoGraph):
 
 
   def add_insplit_vertices(self, v, vertices, new_vertices):
+    '''
+    Just removes old v and adds v^1 and v^2
+    '''
     vertices = set(vertices)
     vertices.remove(v)
     vertices |= set(new_vertices)
     return vertices
 
-  def add_insplit_edges(self, r_inv_e, s_inv_e, edges, new_vertices, v):
+  def add_insplit_edges(self, r_inv_e, s_inv_e, edges, new_vertices, v, E1, E2):
     '''
     We have a specific vertex v
-    v is replaced with v^0, v^1
-    The edges which have v as a source must be partitioned into E1 and E2
-    Edges in E1 have
+    v is replaced with v^1, v^2
+    Edges with RANGE V:
+      If e has range v then we have to change its range from v to either v^1 or v^2.
+      Partition r^{-1}(v) into E1 and E2 such that E1, E2 are nonempty, E1&E2 is empty, and E1 U E2 = r^{-1}(v)
+      If e in E1 then range(e) should become V1. Similar if e in E2.
+
+    Edges with SOURCE V:
+      If s(e) = v then need to duplicate e and
     '''
 
-    # ADD NEW RANGE EDGES (r(e) = v)
-    # Partitions r_inv_e
+    edges = self.add_insplit_range_edges(r_inv_e, new_vertices, edges, v)
+    edges, edge_to_children_edges = self.add_insplit_source_edges(edges, s_inv_e, v, new_vertices)
+    return edges, edge_to_children_edges
 
-    E1, E2 = self.partition_pairs(r_inv_e)
+  def add_insplit_range_edges(self, r_inv_e, new_vertices, edges, v, E1, E2):
+    '''
+    Function for edges whose range is v   ( r(e) = v  or e in r^{-1}(v) )
+    Must partition edges into nonempty sets E1, E2
+    '''
+    if (E1 is None) or (E2 is None):
+      E1, E2 = self.partition_pairs(r_inv_e)
 
-    print("Partitions:", [e.label for e in E1], [e.label for e in E2])
-
-    if len(E1) == 0 or len(E2)==0:
-      print("Vertex", v)
-      print("r inv e", len(r_inv_e))
-      print("s inv e", len(s_inv_e))
-      A = [[0 for _ in range(len(self.v_as_s))] for _ in range(len(self.v_as_s))]
-      for edge in edges:
-        print("edge", edge.degree_index)
-        A[edge.s][edge.r] += 1
-      out = ''
-      for r in A:
-        for c in r:
-          out += str(c) + ' '
-        out += '\n'
-      print('\n',out)
-
+    assert len(E1&E2) == 0
     assert len(E1) > 0
     assert len(E2) > 0
 
-    for e in E1:
-      e.r = new_vertices[0]
-    for e in E2:
-      e.r = new_vertices[1]
-
+    # edge in Ei need their range set to v^i
     for e in edges:
       if e in E1:
         e.r = new_vertices[0]
       if e in E2:
         e.r = new_vertices[1]
 
-    # add new source edges (s(e) = v)
-
-    edges, child_edge_function, new_edges = self.add_insplit_source_edges(edges, s_inv_e, v, new_vertices)
-    return edges, child_edge_function, new_edges
+    return edges
 
 
   def partition_pairs(self, r_inv_e):

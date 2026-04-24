@@ -81,6 +81,19 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     return A, B
 
 
+  def find_vertex_with_incoming_degree_at_least_four(self, R, B):
+    # Finding a vertex with at least four in-edges
+    for v in range(self.n):
+      total_degree = 0
+      for row in range(self.n):
+        total_degree += len(R[row][v])
+        total_degree += len(B[row][v])
+      if total_degree >= 4:
+        self.can_insplit = True
+        return v
+
+    return None
+
   def partition_for_insplit(self, R,B,range_vertex_to_commuting_square):
     '''
     v is a vertex
@@ -89,24 +102,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
 
     Need at least four source edges! Then can always insplit. So need a vertex that has degree >= 4
     '''
-    print("R")
-    print(R.adj_matrix)
-    print()
-    print("B")
-    print(B.adj_matrix)
-    print()
-
-   # Finding a vertex with at least four in-edges
-    for v in range(self.n):
-      total_degree = 0
-      for row in range(self.n):
-        total_degree += len(R[row][v])
-        total_degree += len(B[row][v])
-      if total_degree >= 4:
-        self.can_insplit = True
-        self.insplit_v = v
-        print(f"At vertex {self.insplit_v} degree {total_degree}")
-        break
+    self.insplit_v = self.find_vertex_with_incoming_degree_at_least_four(R,B)
 
     # If we can't insplit don't bother
     if not self.can_insplit:
@@ -134,11 +130,11 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     sub_X = equal_subset['subset_A']
     sub_Y = equal_subset['subset_B']
 
-    all_commuting_squares = set()
     # sub_X and sub_Y will create a partition of source edges that allow us to insplit
     all_paths_degree_1 = set.union(*[degree_1_source_edge_to_paths[se] for _,se in sub_X])
     all_paths_degree_2 = set.union(*[degree_2_source_edge_to_paths[se] for _,se in sub_Y])
     # these commuting squares guarantees we can insplit
+    all_commuting_squares = set()
     for p1,p2 in zip(all_paths_degree_1, all_paths_degree_2):
       all_commuting_squares.add(CommutingSquare(*p1, *p2))
 
