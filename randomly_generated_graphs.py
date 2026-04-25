@@ -1,6 +1,6 @@
-import sys
+import sys, random
 
-#from InsplitTwoGraph import InsplitTwoGraph
+from InsplitTwoGraph import InsplitTwoGraph
 from RandomlyGeneratedTwoGraph import RandomlyGeneratedTwoGraph
 from calculate_h1 import *
 
@@ -40,14 +40,13 @@ def calc_homology_and_insplit_homology(n, z):
 
   print("Randomly generated graph full adjacency matrix:")
   print_adj_matrix(g)
-  return
 
   print("Calculating homology of random graph...")
   calc_homology(g)
 
   print("######## INSPLITTING ###########")
 
-  g_i = InsplitTwoGraph(g, g.insplit_v, E1=g.E1, E2=g.E2)
+  g_i = InsplitTwoGraph(g)
   calc_homology(g_i, insplit=True)
 
 if __name__ == "__main__":
@@ -59,5 +58,9 @@ if __name__ == "__main__":
   print("sys.argv", sys.argv)
   n = int(sys.argv[1])
   z = int(sys.argv[2])
+  seed = int(sys.argv[3])
 
-  calc_homology_and_insplit_homology(n, z)
+  random.seed(seed)
+  g = RandomlyGeneratedTwoGraph(n,z)
+  print_adj_matrix(g)
+  # calc_homology_and_insplit_homology(n, z)

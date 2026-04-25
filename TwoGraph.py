@@ -16,23 +16,12 @@ from BoundaryFunctionMatrix import BoundaryFunctionMatrix
 class TwoGraph:
   def __init__(self, load_from=None):
     vertices, edge_label_to_edge, commuting_squares = None, None, None
-    # the vertex is the source of the commuting square - for insplitting
-    self.vertex_to_range_commuting_square =  dd(set)
+    self.R_degree = 1
+    self.B_degree = 2
 
-    # the vertex is the range of the commuting square - for insplitting
-    self.vertex_to_source_commuting_square =  dd(set)
-
-    if type(load_from) is not None:
-      if type(load_from) is str:
-        vertices, edge_label_to_edge, commuting_squares = self.parse(load_from)
-
-      elif type(load_from) is dict:
-        vertices = load_from['vertices']
-        edge_label_to_edge = load_from['edge_label_to_edge']
-        commuting_squares = load_from['commuting_squares']
-
+    if type(load_from) is str: # parse from graph
+      vertices, edge_label_to_edge, commuting_squares = self.parse(load_from)
       self.calculate_boundary_matrices(vertices, edge_label_to_edge, commuting_squares)      # as long as load_from is not None we can build boundary matrices
-
     else:
       # load_from is None so we do nothing; not sure why this would be the case
       pass
@@ -155,9 +144,6 @@ class TwoGraph:
 
     range_v = left_range_edge.r
     source_v = left_source_edge.s
-
-    self.vertex_to_range_commuting_square[range_v].add(cs)
-    self.vertex_to_source_commuting_square[source_v].add(cs)
 
     left_range_edge.commuting_squares.add(cs)
     left_source_edge.commuting_squares.add(cs)

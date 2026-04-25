@@ -1,4 +1,6 @@
 import numpy as np
+import itertools
+import collections
 from collections import defaultdict as dd
 
 from find_first_equal_subset import find_first_equal_subset
@@ -8,13 +10,11 @@ from CommutingSquare import CommutingSquare
 
 class RandomlyGeneratedTwoGraph(TwoGraph):
   def __init__(self, n, z):
+    super().__init__()
     # n is number of vertices
     # z is an upper limit on number of edges in graph between any two (maybe non-distinct) vertices
-    self.can_insplit = False
     self.n = n
     self.z = z
-    self.R_degree = 1
-    self.B_degree = 2
     attempts = 0
 
     while True:
@@ -26,24 +26,36 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       if attempts > 5:
         assert False
 
-    R_path_matrix = PathMatrix(R, R_degree)
-    B_path_matrix = PathMatrix(B, B_degree)
+    # Setup matrices
+    self.R_path_matrix = PathMatrix(R, self.R_degree)
+    self.B_path_matrix = PathMatrix(B, self.B_degree)
+    self.RB_paths_matrix = self.R_path_matrix*self.B_path_matrix
+    self.BR_paths_matrix = self.B_path_matrix*self.R_path_matrix
 
-    commuting_squares, E1, E2 = self.get_commuting_squares(R_path_matrix, B_path_matrix)
-    self.E1 = E1
-    self.E2 = E2
+    v,E1,E2 = self.find_insplit_vertex()
+    commuting_squares = self.get_commuting_squares(v, E1,E2)
 
     if commuting_squares is None:
+      print("Commuting squares is none!")
       return
 
     print("Okay creating TwoGraph from Random graph now")
-    load_from = {
-      'vertices':[i for i in range(n)],   # Vertices are just basic integers 0,1,...,n-1
-      'edge_label_to_edge':{edge.label:edge for edge in R_path_matrix.edges + B_path_matrix.edges},
-      'commuting_squares':commuting_squares
-    }
-    super().__init__(load_from)
 
+    self.calculate_boundary_matrices(
+      [i for i in range(n)],
+      {edge.label:edge for edge in self.R_path_matrix.edges + self.B_path_matrix.edges},
+      commuting_squares
+    )
+
+  def find_insplit_vertex(self):
+    for v in range(self.n):
+      E1, E2 =  self.matching_partition(v)
+      print(f"Insplit vertex v={v}")
+      print(f'E1 len={len(E1)}')
+      print(f'E2 len={len(E2)}')
+      if len(E1)>0 and len(E2)>0:
+        return v, E1, E2
+    return None,{},{}
 
 
 
@@ -63,6 +75,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     A = np.eye(self.n, dtype=int)
 
     # Fill lower triangle with small integers to keep growth controlled
+    np.random.seed(0)
     for i in range(self.n):
         for j in range(i):
             A[i, j] = np.random.randint(0, self.z // 2)
@@ -82,68 +95,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     B = A + k * np.eye(self.n, dtype=int)
     return A, B
 
-
-  def find_vertex_with_incoming_degree_at_least_four(self, R, B):
-    # Finding a vertex with at least four in-edges
-    for range_vertex in range(self.n):
-      total_edges_into_range_vertex = 0
-      for source_vertex in range(self.n):
-        total_edges_into_range_vertex += len(R[source_vertex][range_vertex]) + len(B[source_vertex][range_vertex])
-      if total_edges_into_range_vertex >= 4:
-        self.can_insplit = True
-        return range_vertex
-    return None
-
-  def partition_for_insplit(self, R,B,range_vertex_to_commuting_square):
-    '''
-    v is a vertex
-    Need to find all edges with range v
-    Partition them then create commuting squares
-
-    Need at least four source edges! Then can always insplit. So need a vertex that has degree >= 4
-
-    Procedure:
-    Take all edges with range r
-    Separate into degree 1 and degree 2
-    Need to get partitions E1, E2 such that
-    1. E1 and E2 have as many degree 1 edges as degree 2 edges
-    2. E1, E2 are nonempty, no shared elements, partittion range edges of v
-
-    Make commuting edges where r1 s1 ~ r2 s2 => r1, r2 both in E1 or both in E2 !
-    '''
-    self.insplit_v = self.find_vertex_with_incoming_degree_at_least_four(R,B)
-
-    # If we can't insplit don't bother
-    if not self.can_insplit:
-      return None
-
-    degree_1_range_edge_to_paths = dd(set)
-    degree_2_range_edge_to_paths = dd(set)
-    # Need to partition paths by range edge and the degree of that range edge
-
-    for cs in range_vertex_to_commuting_square[self.insplit_v]:
-      r1, s1 = cs.path1
-      r2, s2 = cs.path2
-
-      if r1.degree == 1:
-        degree_1_range_edge_to_paths[r1].add(cs.path1)
-        degree_2_range_edge_to_paths[r2].add(cs.path2)
-      else:
-        degree_2_range_edge_to_paths[r1].add(cs.path1)
-        degree_1_range_edge_to_paths[r2].add(cs.path2)
-
-    X = [(len(paths), re) for re,paths in degree_1_range_edge_to_paths.items()]
-    Y = [(len(paths), re) for re,paths in degree_2_range_edge_to_paths.items()]
-
-    equal_subset = find_first_equal_subset(X,Y)
-    E1_degree_1_edges = [edge for _,edge in equal_subset['subset_A']]
-    E1_degree_2_edges = [edge for _,edge in equal_subset['subset_B']]
-
-    E2_degree_1_edges = [edge for _,edge in X if edge not in E1_degree_1_edges]
-    E2_degree_2_edges = [edge for _,edge in Y if edge not in E1_degree_2_edges]
-    return (E1_degree_1_edges, E1_degree_2_edges), (E2_degree_1_edges, E2_degree_2_edges)
-
-  def get_commuting_squares(self, R, B):
+  def get_commuting_squares(self, v, E1, E2):
     '''
     Inputs:
     R,B PathMatrix objects
@@ -151,62 +103,159 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       R[i][j] is a list of paths of length 1 from v_i to v_j
       path of the form
     '''
-    print("WARNING: enforce we can insplit at vertex")
-    print("WARNING: Change to sets instead of lists otherwise commuting squares will always be boring I think?")
-
     # Of the form ('r', i, j), ('b', u, v)  with
     # source edge being ('b',u,v)
     # range edge being ('r',i,j)
-    RB_paths_matrix = R*B
-    BR_paths_matrix = B*R
     commuting_squares = []
-
     range_vertex_to_commuting_square = dd(set)
-
     for row in range(self.n): # source vertex
       for col in range(self.n): # range vertex
-        assert len(RB_paths_matrix[row][col]) == len(BR_paths_matrix[row][col])
-        for RB_path, BR_path  in zip(RB_paths_matrix[row][col], BR_paths_matrix[row][col]):
+        if col == v:
+          continue
+
+        assert len(self.RB_paths_matrix[row][col]) == len(self.BR_paths_matrix[row][col])
+
+        for RB_path, BR_path  in zip(self.RB_paths_matrix[row][col], self.BR_paths_matrix[row][col]):
           s1,r1 = RB_path
           s2,r2 = BR_path
 
           assert s1.s == s2.s
           assert r1.r == r2.r
+          commuting_squares.append(CommutingSquare(r1,s1, r2, s2))
 
-          range_vertex_to_commuting_square[r1.r].add(CommutingSquare(r1,s1, r2, s2))
+    # Commuting squares for the insplit vertex
+    E1_RB_paths = set()
+    E1_BR_paths = set()
+    E2_RB_paths = set()
+    E2_BR_paths = set()
 
-    (E1_red_edges, E1_blue_edges), (E2_red_edges, E2_blue_edges) = self.partition_for_insplit(R, B, range_vertex_to_commuting_square)
+    print(f"E1 = {[e.label for e in E1]}")
+    print()
+    print(f"E2 = {[e.label for e in E2]}")
+    print()
 
-    all_commuting_squares = set()
-    all_commuting_squares |= self.get_commuting_squares_for_partition(E1_red_edges, E1_blue_edges, R, B)
-    all_commuting_squares |= self.get_commuting_squares_for_partition(E2_red_edges, E2_blue_edges, R, B)
+    for row in range(self.n):
+      print("Source is", row, 'range is', v)
+      print("RB paths")
+      for s,r in self.RB_paths_matrix[row][v]:
+        print(s,r)
+      print("BR paths")
+      for s,r in self.BR_paths_matrix[row][v]:
+        print(s,r)
 
-    for range_vertex, commuting_squares in range_vertex_to_commuting_square.items():
-      if range_vertex == self.insplit_v:
-        continue
-      all_commuting_squares |= commuting_squares
+      E1_RB_paths, E2_RB_paths = self.partition_paths(E1, E2, self.RB_paths_matrix[row][v])
+      E1_BR_paths, E2_BR_paths = self.partition_paths(E1, E2, self.BR_paths_matrix[row][v])
 
-    E1 = E1_red_edges + E1_blue_edges
-    E2 = E2_red_edges + E2_blue_edges
-    return commuting_squares, E1, E2
+      for RB_path, BR_path in zip(E1_RB_paths, E1_BR_paths):
+        s1,r1 = RB_path
+        s2,r2 = BR_path
 
+        print(f"Sources should be{row}:", s1, s2, '\t', s1.s, s2.s)
+        print(f"Rangesf should be{v}:", r1, r2, '\t', r1.r, r2.r)
 
-  def get_commuting_squares_for_partition(self, E_red_edges, E_blue_edges, R, B):
-    red_blue_paths = set()
-    for red_edge in E_red_edges: # Red edges
-      # it is the range edge so we need to look at the other matrix to get source edge
-      for source_vertex in len(B.n):
-        for blue_edge in B[source_vertex][red_edge.s]:
-          red_blue_paths.add((red_edge, blue_edge))
-
-    blue_red_paths = set()
-    for blue_edge in E_blue_edges:
-      for source_vertex in len(R.n):
-        for red_edge in R[source_vertex][blue_edge.s]:
-          blue_red_paths.add((blue_edge, red_edge))
-    commuting_squares = set()
-
-    assert len(red_blue_paths) == len(blue_red_paths)
-    for (r1,s1), (r2,s2) in zip(red_blue_paths, blue_red_paths):
-      commuting_squares.add(CommutingSquare(r1,s1,r2,s2))
+        assert s1.s == s2.s
+        assert r1.r == r2.r
+        commuting_squares.append(CommutingSquare(r1,s1, r2, s2))
     return commuting_squares
+
+  def partition_paths(self, E1, E2, paths):
+    E1_paths, E2_paths = set(), set()
+    for se,re in paths:
+      if re in E1:
+        E1_paths.add((se,re))
+      elif  re in E2:
+        E2_paths.add((se,re))
+      else:
+        assert False
+    return E1_paths, E2_paths
+
+
+  def get_source_profile_vectors(self, v):
+    '''
+    Want to get vectors Ve. One for each edge e in r^{-1}(v). They will have size 1xn.
+    Ve[i] = number of paths from vertex i to the source vertex of e such that the path is a red-blue path
+    (assuming e is blue edge)
+    '''
+
+    # Edges whose range is v
+    incoming_red_edges  = [e for e in self.R_path_matrix.edges if e.r == v]
+    for re in incoming_red_edges:
+      assert re.degree == self.R_degree
+    red_range_edge_to_num_paths_to_ui  = {e:[0]*self.n for e in incoming_red_edges}
+
+    incoming_blue_edges = [e for e in self.B_path_matrix.edges if e.r == v]
+    for be in incoming_blue_edges:
+      assert be.degree == self.B_degree
+    blue_range_edge_to_num_paths_to_ui = {e:[0]*self.n for e in incoming_blue_edges}
+
+    print(f"Incoming edges {len(incoming_red_edges) + len(incoming_blue_edges)}")
+    for i in range(self.n):
+      # For each vertex i find the number of blue-red paths which go
+      # from vertex i to v through blue edge f
+      for _,blue_range_edge in self.RB_paths_matrix[i][v]:
+        assert blue_range_edge.degree == self.B_degree
+        blue_range_edge_to_num_paths_to_ui[blue_range_edge][i] += 1
+
+      for _,red_range_edge in self.BR_paths_matrix[i][v]:
+        assert red_range_edge.degree == self.R_degree
+        red_range_edge_to_num_paths_to_ui[red_range_edge][i] += 1
+
+    blue_range_edge_to_num_paths_to_ui = {e: tuple(vec) for e,vec in blue_range_edge_to_num_paths_to_ui.items()}
+    red_range_edge_to_num_paths_to_ui = {e: tuple(vec) for e,vec in red_range_edge_to_num_paths_to_ui.items()}
+    return incoming_red_edges, incoming_blue_edges, red_range_edge_to_num_paths_to_ui, blue_range_edge_to_num_paths_to_ui
+
+
+  def matching_partition(self, v):
+    '''Get source profile vectors then do a subset sum problem where
+    we want a subset of the red edge to number of paths vectors and a
+    subset of the blue edge to number of path vectors such all the
+    blue sum to the same vector as all the red. If two proper subsets
+    exist then they are contain the edges that should be in E1. E2 is
+    the rest of the edges.
+    '''
+
+    R_edges, B_edges, R_vecs, B_vecs = self.get_source_profile_vectors(v)
+    all_incoming = list(set(R_edges) | set(B_edges))
+
+    if len(all_incoming) < 2:
+      return None
+
+    # Shortcut: Check for edges that participate in zero commuting squares
+    for edge in all_incoming:
+      vec = R_vecs.get(edge) or B_vecs.get(edge)
+      if all(x == 0 for x in vec):
+        E1 = {edge}
+        E2 = set(all_incoming) - E1
+        return E1, E2
+
+    # Vector Subset Sum Search
+    m, n = len(R_edges), len(B_edges)
+
+    # We look for a subset of red edges I and blue edges J
+    # such that the sum of their requirement vectors is identical.
+    for r_size in range(m + 1):
+      for b_size in range(n + 1):
+        if (r_size == 0 and b_size == 0) or (r_size == m and b_size == n):
+          continue
+
+        # Optimization: Pre-calculate combinations of Red subsets
+        for I_sub in itertools.combinations(range(m), r_size):
+          red_sum = [0] * self.n
+          for idx in I_sub:
+            for k in range(self.n):
+              red_sum[k] += R_vecs[R_edges[idx]][k]
+
+          # Check against all combinations of Blue subsets
+          for J_sub in itertools.combinations(range(n), b_size):
+            blue_sum = [0] * self.n
+            for idx in J_sub:
+              for k in range(self.n):
+                blue_sum[k] += B_vecs[B_edges[idx]][k]
+
+            if red_sum == blue_sum:
+              E1 = set(R_edges[i] for i in I_sub) | set(B_edges[j] for j in J_sub)
+              E2 = set(all_incoming) - E1
+              print(f"Returning {len(E1)} {len(E2)}")
+              return E1, E2
+
+    return {},{}

@@ -3,10 +3,36 @@ from Edge import Edge
 from CommutingSquare import CommutingSquare
 
 class InsplitTwoGraph(TwoGraph):
-  def __init__(self, g, v, E1=None, E2=None):
+  def __init__(self, g, v=None, E1=None, E2=None):
+    super().__init__()
     # og_graph is the graph we are going to insplit
     # v is the vertex at which we insplit
 
+    self.E1, self.E2 = {},{}
+
+    if v is None:
+      v,self.E1, self.E2 = self.find_insplit_vertex(g)
+    else:
+      self.E1, self.E2 = self.partition_pairs(v)
+
+    assert len(self.E1&self.E2) == 0
+    assert len(self.E1) > 0
+    assert len(self.E2) > 0
+
+    self.insplit(g,v)
+    self.calculate_boundary_matrices(list(vertices_as_set), {edge.label:edge for edge in edges}, commuting_squares)
+
+  def find_insplit_vertex(self, g):
+    E1, E2 = {}, {}
+    for v in g.vertices:
+      E1, E2 = self.partition_pairs(v)
+      print("E1,E2",E1,E2)
+
+      if (len(E1) != 0) and (len(E2) != 0) and (len(E1&E2) == 0):
+        return v, E1, E2
+    return -1,{},{}
+
+  def insplit(self, g, v):
     #Add vertices to graph
     new_vertices = [str(v)+'^1', str(v)+'^2']
     vertices_as_set = self.add_insplit_vertices(v, g.vertices, new_vertices)
@@ -18,14 +44,6 @@ class InsplitTwoGraph(TwoGraph):
 
     # COMMUTING SQUARES
     commuting_squares = self.add_insplit_commuting_squares(v, g.commuting_squares, edge_to_children_edges)
-
-    load_from = {
-      'vertices':list(vertices_as_set),
-      'edge_label_to_edge':{edge.label:edge for edge in edges},
-      'commuting_squares':commuting_squares
-    }
-    super().__init__(load_from)
-
 
   def add_insplit_source_edges(self, edges, s_inv_e, v, new_vertices):
     # Make function:
@@ -115,18 +133,11 @@ class InsplitTwoGraph(TwoGraph):
     edges, edge_to_children_edges = self.add_insplit_source_edges(edges, s_inv_e, v, new_vertices)
     return edges, edge_to_children_edges
 
-  def add_insplit_range_edges(self, r_inv_e, new_vertices, edges, v, E1, E2):
+  def add_insplit_range_edges(self, r_inv_e, new_vertices, edges, v):
     '''
     Function for edges whose range is v   ( r(e) = v  or e in r^{-1}(v) )
     Must partition edges into nonempty sets E1, E2
     '''
-    if (E1 is None) or (E2 is None):
-      E1, E2 = self.partition_pairs(r_inv_e)
-
-    assert len(E1&E2) == 0
-    assert len(E1) > 0
-    assert len(E2) > 0
-
     # edge in Ei need their range set to v^i
     for e in edges:
       if e in E1:
@@ -135,73 +146,3 @@ class InsplitTwoGraph(TwoGraph):
         e.r = new_vertices[1]
 
     return edges
-
-
-  def partition_pairs(self, r_inv_e):
-    commuting_squares_with_range_v = set()
-    for e in r_inv_e:
-      commuting_squares_with_range_v |= e.range_of_commuting_squares
-
-    S = set()
-    for cs in commuting_squares_with_range_v:
-      S.add( tuple(sorted(cs.r)) )
-    print("S", S)
-
-    # 1. Map every element to its "parent" (initially itself)
-    parent = {}
-
-    def find(i):
-      if parent[i] == i:
-        return i
-      parent[i] = find(parent[i]) # Path compression
-      return parent[i]
-
-    def union(i, j):
-      root_i = find(i)
-      root_j = find(j)
-      if root_i != root_j:
-        parent[root_i] = root_j
-
-    # Get all unique elements
-    elements = set().union(*S)
-    for el in elements:
-      parent[el] = el
-
-    # 2. Union the elements in each pair
-    for pair in S:
-      p_list = list(pair)
-      # Since it's a pair, we union the first element with the second
-      union(p_list[0], p_list[1])
-
-    # 3. Group elements by their root parent
-    components = {}
-    for el in elements:
-      root = find(el)
-      if root not in components:
-        components[root] = set()
-      components[root].add(el)
-
-    # 4. Partition into E1 and E2
-    # We take the first component found for E1,
-    # and put everything else into E2.
-    groups = list(components.values())
-
-    if not groups:
-      return set(), set()
-
-    E1 = groups[0]
-    E2 = set().union(*groups[1:]) if len(groups) > 1 else set()
-
-    # Put any elements not in the partitions in a partition
-    r_inv_e -= E1
-    r_inv_e -= E2
-    if len(r_inv_e) > 0:
-      i = 0
-      for e in r_inv_e:
-        if (i%2)== 0:
-          E1.add(e)
-        else:
-          E2.add(e)
-        i += 1
-
-    return E1, E2

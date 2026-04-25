@@ -16,6 +16,11 @@ class PathMatrix:
     self.path_matrix =  self.get_path_matrix(A, degree)
     self.edges = self.get_edges()
 
+  def add_edge(self, edge):
+    self.path_matrix[edge.s][edge.r].append(edge)
+    self.adj_matrix[edge.s][edge.r] += 1
+    self.edges.append(edge)
+
   def __getitem__(self, i):
     return self.path_matrix[i]
 
@@ -65,8 +70,6 @@ class PathMatrix:
 
     return res
 
-  def edge_label(self, source_vertex, range_vertex, degree, edge_number):
-    return 'E(deg=' + str(degree) + ', (' + str(source_vertex) + ', ' + str(range_vertex) + ')#=' + str(edge_number)
 
   def get_path_matrix(self, A, degree):
     '''
@@ -85,7 +88,7 @@ class PathMatrix:
     path_matrix =  [
       [
         [
-          Edge(self.edge_label(row, col, self.degree, edge_key), row, col, degree=degree) for edge_key in range(A[row][col])
+          PathMatrix.create_edge(row, col, self.degree, edge_key) for edge_key in range(A[row][col])
         ]
         for col in range(self.n)
     ]
@@ -99,3 +102,8 @@ class PathMatrix:
       for eset in r:
         edges += eset
     return edges
+
+  @staticmethod
+  def create_edge(source_vertex, range_vertex, degree, edge_key):
+    edge_label = 'E(deg=' + str(degree) + ', (' + str(source_vertex) + ', ' + str(range_vertex) + ')#=' + str(edge_key)
+    return Edge(edge_label, source_vertex, range_vertex, degree=degree)
