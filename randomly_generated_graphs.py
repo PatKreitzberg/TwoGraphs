@@ -49,9 +49,9 @@ def calc_homology_and_insplit_homology(n, z):
     for cs in g.commuting_squares:
       print(cs)
     print()
-    print("INSPLIT  graph commuting squares")
-    for cs in gi.commuting_squares:
-      print(cs)
+    # print("INSPLIT  graph commuting squares")
+    # for cs in gi.commuting_squares:
+    #   print(cs)
 
     print("Homologies...")
     print("Calculating homology of random graph...")

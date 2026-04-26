@@ -28,6 +28,32 @@ class TwoGraph:
     else:
       pass
 
+  def save_to_file(self, filename, insplit_v = None):
+    '''Write to file which can be opened in this class.
+
+    '''
+    nl = '\n'
+    with open(filename, 'w+') as f:
+      f.write('# edges of the form <edge label> <source vertex> <range vertex>')
+      deg_1_str = '1 '
+      deg_2_str = '1 '
+      for e in self.edges:
+        f.write(e.label + ' ' + e.r + ' ' + e.s + nl)
+        if e.degree == 1:
+          deg_1_str += e.label + ' '
+        if e.degree == 2:
+          deg_2_str += e.label + ' '
+      f.write('')
+      f.write('# degrees  of the form <degree> <edge> <edge>...')
+      f.write(deg_1_str + '\n' + deg_2_str + nl)
+      f.write('# commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>')
+      for cs in self.commuting_squares:
+        f.write(cs.s1 +' '+ cs.r1 +' '+  cs.s2 +' '+  cs.r2 + nl)
+
+      if insplit_v is not None:
+        f.write("#notes" + nl + 'insplit-v  ' + str(insplit_v))
+      f.close()
+
   def print_path_matrix(self, A, title):
     adj_str = '['
     for row in A:

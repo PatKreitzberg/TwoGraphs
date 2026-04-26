@@ -106,5 +106,5 @@ class PathMatrix:
 
   @staticmethod
   def create_edge(source_vertex, range_vertex, degree, edge_key):
-    edge_label = 'E(deg=' + str(degree) + ', (' + str(source_vertex) + ', ' + str(range_vertex) + ')#=' + str(edge_key)
+    edge_label = 'E(deg=' + str(degree) + ',(' + str(source_vertex) + ',' + str(range_vertex) + ')#=' + str(edge_key)
     return Edge(edge_label, source_vertex, range_vertex, degree=degree)
