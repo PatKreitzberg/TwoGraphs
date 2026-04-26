@@ -1,0 +1,130 @@
+MOST INTERESTING ALL H1, H2 are different
+Red edge adjacency matrix
+[[1, 2, 0, 0, 0]
+[0, 1, 0, 0, 0]
+[0, 0, 1, 0, 0]
+[0, 0, 0, 1, 0]
+[2, 1, 0, 0, 1]]
+Blue edge adjacency matrix
+[[2, 4, 0, 0, 0]
+[0, 2, 0, 0, 0]
+[0, 0, 2, 0, 0]
+[0, 0, 0, 2, 0]
+[4, 6, 0, 0, 2]]
+Finding insplit vertex...
+Trying with v= 0
+v is 0
+Randomly generated graph full adjacency matrix:
+
+ [3 6 0 0 0 ]
+[0 3 0 0 0 ]
+[0 0 3 0 0 ]
+[0 0 0 3 0 ]
+[6 7 0 0 3 ]
+
+Calculating homology of random graph...
+For graph
+H1:
+Gemini: H1 = Z^10 + Z/2
+Claude: H1 = Z^10 ⊕ Z/2Z
+H2 = Z^20
+
+######## INSPLITTING ###########
+For insplit of random graph
+H1:
+Gemini: H1 = Z^11 + Z/2
+Claude: H1 = Z^11 ⊕ Z/2Z
+H2 = Z^23
+
+
+
+For 5x5:
+Generating random graphs...
+Red edge adjacency matrix
+[[1, 0, 0, 0, 0]
+[1, 1, 0, 0, 0]
+[1, 0, 2, 0, 1]
+[1, 1, 1, 1, 0]
+[2, 2, 3, 0, 2]]
+Blue edge adjacency matrix
+[[2, 0, 0, 0, 0]
+[1, 2, 0, 0, 0]
+[1, 0, 3, 0, 1]
+[1, 1, 1, 2, 0]
+[2, 2, 3, 0, 3]]
+Finding insplit vertex...
+v is 2
+Randomly generated graph full adjacency matrix:
+
+ [3 0 0 0 0 ]
+[2 3 0 0 0 ]
+[2 0 5 0 2 ]
+[2 2 2 3 0 ]
+[4 4 6 0 5 ]
+
+Calculating homology of random graph...
+For graph
+H1:
+Gemini: H1 = Z^2
+Claude: H1 = Z^2
+H2 = Z^50
+
+######## INSPLITTING ###########
+For insplit of random graph
+H1:
+Gemini: H1 = Z^2
+Claude: H1 = Z^2
+H2 = Z^64
+
+
+
+
+for 8x8
+Red edge adjacency matrix
+[[1, 2, 0, 0, 0, 0, 0, 0]
+[0, 1, 0, 0, 0, 0, 0, 0]
+[7, 4, 5, 6, 4, 2, 2, 0]
+[1, 1, 0, 1, 0, 0, 0, 0]
+[1, 1, 1, 0, 1, 0, 0, 0]
+[1, 1, 1, 1, 2, 1, 0, 0]
+[3, 2, 2, 3, 2, 1, 1, 0]
+[2, 0, 2, 2, 0, 1, 1, 1]]
+Blue edge adjacency matrix
+[[2, 2, 0, 0, 0, 0, 0, 0]
+[0, 2, 0, 0, 0, 0, 0, 0]
+[7, 4, 6, 6, 4, 2, 2, 0]
+[1, 1, 0, 2, 0, 0, 0, 0]
+[1, 1, 1, 0, 2, 0, 0, 0]
+[1, 1, 1, 1, 2, 2, 0, 0]
+[3, 2, 2, 3, 2, 1, 2, 0]
+[2, 0, 2, 2, 0, 1, 1, 2]]
+Finding insplit vertex...
+v is 0
+Randomly generated graph full adjacency matrix:
+
+ [3 4 0 0 0 0 0 0 ]
+[0 3 0 0 0 0 0 0 ]
+[14 8 11 12 8 4 4 0 ]
+[2 2 0 3 0 0 0 0 ]
+[2 2 2 0 3 0 0 0 ]
+[2 2 2 2 4 3 0 0 ]
+[6 4 4 6 4 2 3 0 ]
+[4 0 4 4 0 2 2 3 ]
+
+Calculating homology of random graph...
+For graph
+H1:
+Gemini: H1 = Z^3
+Claude: H1 = Z^3
+H2 = Z^496
+
+######## INSPLITTING ###########
+For insplit of random graph
+H1:
+Gemini: H1 = Z^3
+Claude: H1 = Z^3
+H2 = Z^498
+
+DIFFERENT H2?
+
+

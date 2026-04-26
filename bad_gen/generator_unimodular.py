@@ -56,7 +56,7 @@ def generate_commuting_matrix_positive(A, z):
 
 # Configuration
 N = 10
-Z = 20
+Z = 100
 
 # Generate A
 matrix_A = generate_unimodular_matrix_positive(N, Z)

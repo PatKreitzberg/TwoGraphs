@@ -28,6 +28,31 @@ class TwoGraph:
     else:
       pass
 
+  def print_path_matrix(self, A, title):
+    adj_str = '['
+    for row in A:
+      adj_str += '['
+      for col in row:
+        adj_str += str(col) + ', '
+      adj_str = adj_str[:-2]
+      adj_str += ']\n'
+    adj_str = adj_str[:-1] + ']'
+    print(title)
+    print(adj_str)
+
+  def print_adj_matrices(self, title):
+    R = [[0]*self.n for i in range(self.n)]
+    B = [[0]*self.n for i in range(self.n)]
+    for edge in self.edges:
+      if edge.degree == self.R_degree:
+        R[edge.s][edge.r] += 1
+      else:
+        B[edge.s][edge.r] += 1
+
+    self.print_path_matrix(R, "Red adjacency matrix for" + title)
+    self.print_path_matrix(B, "Blue adjacency matrix for" + title)
+
+
   def range_inverse_of_vertex(self, v):
     assert len(self.edges) > 0
     assert v in self.vertices

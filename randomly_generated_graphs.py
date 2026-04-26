@@ -46,8 +46,9 @@ def calc_homology_and_insplit_homology(n, z):
 
   print("######## INSPLITTING ###########")
 
-  g_i = InsplitTwoGraph(g)
-  calc_homology(g_i, insplit=True)
+  if g.is_legit:
+    gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
+    calc_homology(gi, insplit=True)
 
 if __name__ == "__main__":
   print()
@@ -55,13 +56,7 @@ if __name__ == "__main__":
     print("Usage: python two_graph.py <n: number vertices> <z: roughly upper bounds on number edges>")
     sys.exit(1)
 
-  print("sys.argv", sys.argv)
   n = int(sys.argv[1])
   z = int(sys.argv[2])
-  seed = int(sys.argv[3])
 
-  random.seed(seed)
-  g = RandomlyGeneratedTwoGraph(n,z)
-  print_adj_matrix(g)
-  gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
-  # calc_homology_and_insplit_homology(n, z)
+  calc_homology_and_insplit_homology(n, z)

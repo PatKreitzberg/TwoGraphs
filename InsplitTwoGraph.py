@@ -17,13 +17,13 @@ class InsplitTwoGraph(TwoGraph):
     assert len(self.E2) > 0
 
     self.vertices, self.edges, self.commuting_squares = self.insplit(g,v)
+    self.n = len(self.vertices)
     self.calculate_boundary_matrices()
 
   def insplit(self, g, v):
     #Add vertices to graph
     new_vertices = [str(v)+'^1', str(v)+'^2']
     vertices_as_set = self.add_insplit_vertices(v, g.vertices, new_vertices)
-
 
     # MODIFY EDGES
     s_inv_e = set(g.source_inverse_of_vertex(v))

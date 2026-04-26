@@ -38,7 +38,7 @@ def generate_matrices(n, z):
 
 # Parameters
 n = 10
-z = 10
+z = 5
 
 A, B = generate_matrices(n, z)
 
