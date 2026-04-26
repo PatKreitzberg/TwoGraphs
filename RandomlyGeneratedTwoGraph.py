@@ -15,16 +15,12 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     # z is an upper limit on number of edges in graph between any two (maybe non-distinct) vertices
     self.n = n
     self.z = z
+    self.is_legit = True
     attempts = 0
 
-    while True:
-      # Make sure R, B truly commute.
-      R,B = self.generate_adjacency_matrices()
-      if sum(sum(np.dot(R, B) - np.dot(B, R))) == 0:
-        break
-      attempts += 1
-      if attempts > 5:
-        assert False
+    R,B = self.generate_adjacency_matrices()
+    assert R is not None
+    assert B is not None
 
     # Setup matrices
     self.R_path_matrix = PathMatrix(R, self.R_degree)
@@ -32,34 +28,31 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     self.RB_paths_matrix = self.R_path_matrix*self.B_path_matrix
     self.BR_paths_matrix = self.B_path_matrix*self.R_path_matrix
 
+    # Find vertex which can be partitioned at
     v,E1,E2 = self.find_insplit_vertex()
     commuting_squares = self.get_commuting_squares(v, E1,E2)
+    assert commuting_squares is not None
+    assert v is not None
+    assert len(E1) > 0
+    assert len(E2) > 0
 
-    if commuting_squares is None:
-      print("Commuting squares is none!")
-      return
+    n_commuting_squares = len(commuting_squares)
+    n_rb_paths = sum([sum([len(col) for col in row]) for row in self.BR_paths_matrix])
+    assert n_commuting_squares == n_rb_paths
 
-    print("Okay creating TwoGraph from Random graph now")
-
-    self.calculate_boundary_matrices(
-      [i for i in range(n)],
-      {edge.label:edge for edge in self.R_path_matrix.edges + self.B_path_matrix.edges},
-      commuting_squares
-    )
+    self.vertices = {i for i in range(n)}
+    self.edges = {edge for edge in self.R_path_matrix.edges + self.B_path_matrix.edges}
+    self.commuting_squares = commuting_squares
+    self.calculate_boundary_matrices()
 
   def find_insplit_vertex(self):
     for v in range(self.n):
       E1, E2 =  self.matching_partition(v)
-      print(f"Insplit vertex v={v}")
-      print(f'E1 len={len(E1)}')
-      print(f'E2 len={len(E2)}')
       if len(E1)>0 and len(E2)>0:
         return v, E1, E2
     return None,{},{}
 
-
-
-  def generate_adjacency_matrices(self):
+  def generate_adjacency_matrices(self, attempt=0):
     ''''
     Generates adjacency matrices R and B
     R is just for red edges, B for blue edges
@@ -70,6 +63,9 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     always true; for the scond matrix it is harder to guarantee because it must be tailored to commute with
     the first matrix
     '''
+    if attempt > 5:
+      return None,None
+
     # 1. Generate A with det = 1 or -1
     # We use a lower triangular matrix with 1s on diagonal and small off-diagonals
     A = np.eye(self.n, dtype=int)
@@ -93,6 +89,8 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     k = max(1, 1 - min_a)
 
     B = A + k * np.eye(self.n, dtype=int)
+    if sum(sum(np.dot(A, B) - np.dot(A, B))) != 0:
+      return self.generate_adjacency_matrices(attempt=attempt+1)
     return A, B
 
   def get_commuting_squares(self, v, E1, E2):
@@ -124,38 +122,21 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
           commuting_squares.append(CommutingSquare(r1,s1, r2, s2))
 
     # Commuting squares for the insplit vertex
-    E1_RB_paths = set()
-    E1_BR_paths = set()
-    E2_RB_paths = set()
-    E2_BR_paths = set()
-
-    print(f"E1 = {[e.label for e in E1]}")
-    print()
-    print(f"E2 = {[e.label for e in E2]}")
-    print()
+    E1_RB_paths,E1_BR_paths = set(),set()
+    E2_RB_paths,E2_BR_paths = set(),set()
 
     for row in range(self.n):
-      print("Source is", row, 'range is', v)
-      print("RB paths")
-      for s,r in self.RB_paths_matrix[row][v]:
-        print(s,r)
-      print("BR paths")
-      for s,r in self.BR_paths_matrix[row][v]:
-        print(s,r)
-
       E1_RB_paths, E2_RB_paths = self.partition_paths(E1, E2, self.RB_paths_matrix[row][v])
       E1_BR_paths, E2_BR_paths = self.partition_paths(E1, E2, self.BR_paths_matrix[row][v])
 
-      for RB_path, BR_path in zip(E1_RB_paths, E1_BR_paths):
-        s1,r1 = RB_path
-        s2,r2 = BR_path
+      for E_RB_paths,E_BR_paths in [(E1_RB_paths, E1_BR_paths), (E2_RB_paths, E2_BR_paths)]:
+        for RB_path, BR_path in zip(E_RB_paths,E_BR_paths):
+            s1,r1 = RB_path
+            s2,r2 = BR_path
+            assert s1.s == s2.s
+            assert r1.r == r2.r
+            commuting_squares.append(CommutingSquare(r1,s1, r2, s2))
 
-        print(f"Sources should be{row}:", s1, s2, '\t', s1.s, s2.s)
-        print(f"Rangesf should be{v}:", r1, r2, '\t', r1.r, r2.r)
-
-        assert s1.s == s2.s
-        assert r1.r == r2.r
-        commuting_squares.append(CommutingSquare(r1,s1, r2, s2))
     return commuting_squares
 
   def partition_paths(self, E1, E2, paths):
@@ -188,7 +169,6 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       assert be.degree == self.B_degree
     blue_range_edge_to_num_paths_to_ui = {e:[0]*self.n for e in incoming_blue_edges}
 
-    print(f"Incoming edges {len(incoming_red_edges) + len(incoming_blue_edges)}")
     for i in range(self.n):
       # For each vertex i find the number of blue-red paths which go
       # from vertex i to v through blue edge f
@@ -255,7 +235,6 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
             if red_sum == blue_sum:
               E1 = set(R_edges[i] for i in I_sub) | set(B_edges[j] for j in J_sub)
               E2 = set(all_incoming) - E1
-              print(f"Returning {len(E1)} {len(E2)}")
               return E1, E2
 
     return {},{}

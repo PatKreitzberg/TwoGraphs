@@ -15,6 +15,7 @@ class PathMatrix:
     self.adj_matrix = A
     self.path_matrix =  self.get_path_matrix(A, degree)
     self.edges = self.get_edges()
+    self.size = sum([sum(r) for r in self.adj_matrix])
 
   def add_edge(self, edge):
     self.path_matrix[edge.s][edge.r].append(edge)

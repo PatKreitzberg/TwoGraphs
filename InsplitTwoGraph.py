@@ -19,7 +19,7 @@ class InsplitTwoGraph(TwoGraph):
     assert len(self.E1) > 0
     assert len(self.E2) > 0
 
-    self.insplit(g,v)
+    self.vetices, self.edges, self.commuting_squares = self.insplit(g,v)
     self.calculate_boundary_matrices(list(vertices_as_set), {edge.label:edge for edge in edges}, commuting_squares)
 
   def find_insplit_vertex(self, g):
@@ -36,7 +36,7 @@ class InsplitTwoGraph(TwoGraph):
     #Add vertices to graph
     new_vertices = [str(v)+'^1', str(v)+'^2']
     vertices_as_set = self.add_insplit_vertices(v, g.vertices, new_vertices)
-    self.v_as_s = vertices_as_set
+
 
     # MODIFY EDGES
     s_inv_e = set(g.source_inverse_of_vertex(v))
@@ -44,6 +44,7 @@ class InsplitTwoGraph(TwoGraph):
 
     # COMMUTING SQUARES
     commuting_squares = self.add_insplit_commuting_squares(v, g.commuting_squares, edge_to_children_edges)
+    return list(vertices_as_set), edges, commuting_squares
 
   def add_insplit_source_edges(self, edges, s_inv_e, v, new_vertices):
     # Make function:

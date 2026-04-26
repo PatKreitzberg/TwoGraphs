@@ -21,9 +21,11 @@ class TwoGraph:
 
     if type(load_from) is str: # parse from graph
       vertices, edge_label_to_edge, commuting_squares = self.parse(load_from)
-      self.calculate_boundary_matrices(vertices, edge_label_to_edge, commuting_squares)      # as long as load_from is not None we can build boundary matrices
+      self.vertices = list(vertices)
+      self.edges = list(edge_label_to_edge.values())
+      self.commuting_squares = list(commuting_squares)
+      self.calculate_boundary_matrices()
     else:
-      # load_from is None so we do nothing; not sure why this would be the case
       pass
 
   def range_inverse_of_vertex(self, v):
@@ -36,12 +38,8 @@ class TwoGraph:
     assert v in self.vertices
     return {e  for e in self.edges if e.s == v}
 
-  def calculate_boundary_matrices(self, vertices, edge_label_to_edge, commuting_squares):
+  def calculate_boundary_matrices(self):
     # To help calculate matrices
-    self.vertices = list(vertices)
-    self.edges = list(edge_label_to_edge.values())
-    self.commuting_squares = list(commuting_squares)
-
     self.vertex_to_index = {v:i for i,v in enumerate(self.vertices)}
     self.edge_to_index  = {e:i for i,e in enumerate(self.edges)}
     self.commuting_square_to_index = {cs:i for i,cs in enumerate(self.commuting_squares)}
