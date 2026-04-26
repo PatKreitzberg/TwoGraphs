@@ -41,14 +41,24 @@ def calc_homology_and_insplit_homology(n, z):
   print("Randomly generated graph full adjacency matrix:")
   print_adj_matrix(g)
 
-  print("Calculating homology of random graph...")
-  calc_homology(g)
-
   print("######## INSPLITTING ###########")
-
   if g.is_legit:
     gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
+
+    print("Initial graph commuting squares")
+    for cs in g.commuting_squares:
+      print(cs)
+    print()
+    print("INSPLIT  graph commuting squares")
+    for cs in gi.commuting_squares:
+      print(cs)
+
+    print("Homologies...")
+    print("Calculating homology of random graph...")
+    calc_homology(g)
+    print("Calculating homology of the insplit of the random graph...")
     calc_homology(gi, insplit=True)
+
 
 if __name__ == "__main__":
   print()

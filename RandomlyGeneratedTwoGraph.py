@@ -2,6 +2,8 @@ import numpy as np
 import itertools
 import collections
 from collections import defaultdict as dd
+from multiprocessing import Pool, cpu_count
+
 
 from find_first_equal_subset import find_first_equal_subset
 from TwoGraph import TwoGraph
@@ -53,14 +55,6 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     self.commuting_squares = commuting_squares
     self.calculate_boundary_matrices()
 
-  def find_insplit_vertex(self):
-    print("Finding insplit vertex...")
-    for v in range(self.n):
-      print("Trying with v=",v)
-      E1, E2 =  self.matching_partition_opt(v)
-      if len(E1)>0 and len(E2)>0:
-        return v, E1, E2
-    return None,{},{}
 
   def generate_adjacency_matrices(self, attempt=0):
     ''''
@@ -194,6 +188,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     return incoming_red_edges, incoming_blue_edges, red_range_edge_to_num_paths_to_ui, blue_range_edge_to_num_paths_to_ui
 
 
+
   def matching_partition(self, v):
     '''Get source profile vectors then do a subset sum problem where
     we want a subset of the red edge to number of paths vectors and a
@@ -249,6 +244,27 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
 
     return {},{}
 
+
+  def find_insplit_vertex(self):
+    print("Finding insplit vertex...")
+
+    v_to_graph_degree = {v:0 for v in range(self.n)}
+    for se in range(self.n):
+      for re in range(self.n):
+        v_to_graph_degree[re] += self.R_path_matrix.adj_matrix[se][re]
+        v_to_graph_degree[re] += self.B_path_matrix.adj_matrix[se][re]
+
+    v_sorted_by_degree = sorted( [(int(d),v) for v,d in v_to_graph_degree.items()] )
+    print("sorted?", v_sorted_by_degree)
+
+    for _,v in v_sorted_by_degree:
+      print("Trying with v=",v)
+      #E1, E2 =  self.matching_partition(v)
+      E1, E2 =  self.matching_partition_opt(v)
+      #E1, E2 =  self.matching_partition_parallel(v)
+      if len(E1)>0 and len(E2)>0:
+        return v, E1, E2
+    return None,{},{}
 
   def matching_partition_opt(self, v):
       R_edges, B_edges, R_vecs, B_vecs = self.get_source_profile_vectors(v)
@@ -312,6 +328,65 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
 
       return {}, {}
 
+
+
+  def check_blue_range(self, args):
+    """Worker function to check a specific range of blue sizes."""
+    blue_indices, B_edges, B_vecs, red_sum_map, vector_len, m, n = args
+
+    # blue_indices is a list of b_sizes to check, e.g., [1, 2]
+    for b_size in blue_indices:
+      for J_sub in itertools.combinations(range(n), b_size):
+        blue_sum = [0] * vector_len
+        for idx in J_sub:
+          vec = B_vecs[B_edges[idx]]
+          for k in range(vector_len):
+            blue_sum[k] += vec[k]
+
+        blue_sum_tuple = tuple(blue_sum)
+        if blue_sum_tuple in red_sum_map:
+          I_sub = red_sum_map[blue_sum_tuple]
+          # Filter out the (0,0) and (m,n) forbidden cases
+          if not ((len(I_sub) == 0 and len(J_sub) == 0) or
+              (len(I_sub) == m and len(J_sub) == n)):
+            return (I_sub, J_sub)
+    return None
+
+  def matching_partition_parallel(self, v):
+    R_edges, B_edges, R_vecs, B_vecs = self.get_source_profile_vectors(v)
+    m, n = len(R_edges), len(B_edges)
+
+    # 1. Build the Red Sum Map (The "Meet-in-the-Middle" baseline)
+    red_sum_map = {}
+    for r_size in range(m + 1):
+      for I_sub in itertools.combinations(range(m), r_size):
+        current_sum = tuple(sum(x) for x in zip(*(R_vecs[R_edges[i]] for i in I_sub))) if I_sub else tuple([0]*self.n)
+        if current_sum not in red_sum_map:
+          red_sum_map[current_sum] = I_sub
+
+    # 2. Prepare work for the Pool
+    num_cores = cpu_count()
+    # Split blue_sizes (0 to n) into chunks for each core
+    blue_sizes = list(range(n + 1))
+    chunk_size = max(1, len(blue_sizes) // num_cores)
+    chunks = [blue_sizes[i:i + chunk_size] for i in range(0, len(blue_sizes), chunk_size)]
+
+    worker_args = [
+      (chunk, B_edges, B_vecs, red_sum_map, self.n, m, n)
+      for chunk in chunks
+    ]
+
+    # 3. Execute in Parallel
+    with Pool(processes=num_cores) as pool:
+      # imap_unordered is slightly faster as it returns results as soon as they are ready
+      for result in pool.imap_unordered(self.check_blue_range, worker_args):
+        if result:
+          I_sub, J_sub = result
+          pool.terminate() # Stop other workers once we find a match
+          E1 = set(R_edges[i] for i in I_sub) | set(B_edges[j] for j in J_sub)
+          return E1, (set(R_edges) | set(B_edges)) - E1
+
+    return {}, {}
 
   def gen(self, attempt=0):
     """
