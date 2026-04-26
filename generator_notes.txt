@@ -1,0 +1,1 @@
+gen4claude.py makes B with real high values

@@ -1,0 +1,144 @@
+
+
+## Prompt for partition function
+
+I am working with 2-graphs. I need to do the following:
+
+Since we have a 2-graph, each edge is either red or blue. If an edge e
+is red then e.degree == 1 and if an edge f is blue then f.degree ==
+2. Further, there can be one or more loops at a vertex and there can
+be multiple edges between the same pair of vertices.
+
+A commuting square in the 2-graph is a pair of paths of length two. One
+path is a blue edge then red edge the other path is red then
+blue. Both paths must start at the same vertex and end at the same
+vertex, the middle vertex can be the same or different. If there is a
+blue-red path from vertex u to v with edges a:u->w and f:w->v and a
+red-blue path from vertex u to v with edges e:u -> z and b:z -> v then
+you make a commuting square by making an object
+CommutingSquare(b,e,f,a).
+
+Each red-blue path should be in exactly one commuting square. Same
+with each blue-red paths. It is guaranteed that between any two
+vertices i and j there are the same number of red-blue paths as there
+are blue-red paths (which may be zero).
+
+I need to find a vertex v which we can "insplit" at. 
+
+To insplit at vertex v you take all the edges with range v and partition into two sets E1 and E2.
+If r_inv_e is the set of edges with range v then we need E sets E1 and E2 to satisfy the following:
+1. len(E1) > 0
+2. len(E2) > 0
+3. r_inv_e = E1|E2
+4. len(E1&E2) = 0
+5. For commuting square (b,e,f,a) we must have that edges b and f are in the same E set.
+
+It would be easiest if you can find necessary conditions we can check
+to ensure such a partition does or does not exist. Can you think of
+such conditions? If you can not then let me know and we can go from
+there. It is certainly possible that there are no checkable conditions.
+
+I can build the commuting squares as needed to ensure the partitions
+E1 and E2 that allow for insplitting at v. But every red-blue path and
+blue-red path with range v must be in a commuting square.
+
+
+
+Since we can not find a condition to check for insplitting, lets make
+a python function that takes a vertex and tries to partition incoming
+edges into E1 and E2 that satisfy the rules 1 through 5 above. If a
+partitioning fails, it should check more until all possible partitions
+are exhausted. First partition the edges then try and build the
+corresponding commuting squares.
+
+It is clear that if an E set contains a blue edge that is the second
+edge in a red-blue path from a vertex u to the vertex v then there
+must be a red edge that is the second edge in a path from u to v.
+
+The function should assign commuting squares for every red-blue path
+and every blue-red path which end at v so that the conditions above
+are met. It should first figure out an E1 E2 partition that works then
+create the commuting squares. If it can not do so then it should
+return empty E1 E2 commuting_squares
+
+
+
+To do so, the class has objects:
+self.R_path_matrix is an adjacency matrix size self.n by self.n of just the red edges. An element self.R_path_matrix[i][j] is a list of red edges (Edge object whose class is written below)  from vertex i to vertex j.
+self.B_path_matrix is an adjacency matrix  self.n by self.n of just the blue edges. An element self.B_path_matrix[i][j] is a list of blue edges (Edge object whose class is written below)  from vertex i to vertex j.
+self.RB_paths_matrix = self.R_path_matrix*self.B_path_matrix  # is a matrix where self.RB_paths_matrix[i][j]  is a list of length two red-blue paths from vertex i to vertex j
+self.BR_paths_matrix = self.B_path_matrix*self.R_path_matrix   # is a matrix where self.BR_paths_matrix[i][j]  is a list of length two blue-red paths from vertex i to vertex j
+
+
+
+class Edge:
+  def __init__(self, label, s, r, degree=None):
+    # label is string name of edge
+    # s is source vertex
+    # r is range vertex
+
+    self.label = label
+    self.s = s # source of edge
+    self.r = r # range of edge
+    self.degree = degree
+    self.range_of_commuting_squares = set()
+    self.commuting_squares = set()
+
+  def __contains__(self, v):
+    return (v == self.s) or (v == self.r)
+  def __str__(self):
+    return self.label
+  def __eq__(self, other):
+    return self.label == other.label
+  def __hash__(self):
+    return hash(self.label)
+  def __lt__(self, other):
+    return self.label < other.label
+
+class CommutingSquare:
+  def __init__(self, r1, s1, r2, s2):
+    # commuting squares need to have same source and range
+    assert r1.r == r2.r
+    assert s1.s == s2.s
+
+    self.path1 = (r1,s1)
+    self.path2 = (r2,s2)
+    self.s1 = s1
+    self.r1 = r1
+    self.s2 = s2
+    self.r2 = r2
+    self.label = '(' + r1.label + ' ' + s1.label + ' ~ ' + r2.label + ' ' + s2.label + ')'
+
+    assert self.path1[0].degree == self.path2[1].degree
+    assert self.path1[1].degree == self.path2[0].degree
+
+    self.degree_indices = set([r1.degree, s1.degree, r2.degree, s2.degree])
+    self.degree_to_edges = {
+      self.path1[0].degree: [self.path1[0], self.path2[1]],
+      self.path2[0].degree: [self.path1[1], self.path2[0]],
+    }
+
+  def __eq__(self, other):
+    return (self.path1 == other.path1) and (self.path2 == other.path2)
+
+  def __contains__(self, edge):
+    assert type(edge) is Edge
+    return (edge in self.path1) or (edge in self.path2)
+
+  def __hash__(self):
+    return hash(self.label)
+
+  def __str__(self):
+    return self.label
+
+  def __getitem__(self, i):
+    assert i < 4
+    if i <= 1:
+      return self.path1[i]
+    return self.path2[i-2]
+
+
+Your task: Create the function that makes the partitions and commuting
+squares. This should either try multiple partitions if the first does
+not work or you can find a set of conditions that guarantees the
+partition E1 E2 are possible.

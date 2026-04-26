@@ -2,13 +2,24 @@ import numpy as np
 import itertools
 import collections
 from collections import defaultdict as dd
-from multiprocessing import Pool, cpu_count
-
+import multiprocessing
+from functools import partial
 
 from find_first_equal_subset import find_first_equal_subset
 from TwoGraph import TwoGraph
 from PathMatrix import PathMatrix
 from CommutingSquare import CommutingSquare
+
+def _worker_wrapper(v, obj):
+  """
+  Top-level helper function to call the method on the object.
+  This avoids pickling issues with bound methods.
+  """
+  E1, E2 = obj.matching_partition_claude(v)
+  print("V=",v,"done")
+  if len(E1) > 0 and len(E2) > 0:
+    return v, E1, E2
+  return None
 
 class RandomlyGeneratedTwoGraph(TwoGraph):
   def __init__(self, n, z):
@@ -21,6 +32,17 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
 
     #R,B = self.generate_adjacency_matrices()
     R,B = self.gen()
+
+    # WITH TORSION
+   # R,B with H1, H2 different. Genereated with the gen() function, not generate_adjacency_matrices() function
+    # R = [[1, 2, 0, 0, 0],[0, 1, 0, 0, 0],[0, 0, 1, 0, 0],[0, 0, 0, 1, 0],[2, 1, 0, 0, 1]]
+    # B = [[2, 4, 0, 0, 0],[0, 2, 0, 0, 0],[0, 0, 2, 0, 0],[0, 0, 0, 2, 0],[4, 6, 0, 0, 2]]
+
+    # WITHOUT TORSION
+    # R,B with H1, H2 different. Genereated with the gen() function, not generate_adjacency_matrices() function
+    # R = [[1, 0, 0, 1],[2, 1, 0, 0],[0, 0, 1, 1],[0, 0, 0, 1]]
+    # B = [[2, 0, 0, 2],[4, 2, 0, 2],[0, 0, 2, 2],[0, 0, 0, 2]]
+
     assert R is not None
     assert B is not None
 
@@ -34,7 +56,8 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     self.print_path_matrix(self.B_path_matrix.adj_matrix, "Blue edge adjacency matrix")
 
     # Find vertex which can be partitioned at
-    v,E1,E2 = self.find_insplit_vertex()
+    #v,E1,E2 = self.find_insplit_vertex()
+    v,E1,E2 = self.find_insplit_vertex_opt()
     print(f"v is {v}")
     assert v is not None
     assert len(E1) > 0
@@ -167,6 +190,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       assert re.degree == self.R_degree
     red_range_edge_to_num_paths_to_ui  = {e:[0]*self.n for e in incoming_red_edges}
 
+    # Edges whose range is v
     incoming_blue_edges = [e for e in self.B_path_matrix.edges if e.r == v]
     for be in incoming_blue_edges:
       assert be.degree == self.B_degree
@@ -244,10 +268,23 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
 
     return {},{}
 
-
   def find_insplit_vertex(self):
-    print("Finding insplit vertex...")
+    # Determine the number of available CPU cores
+    num_cores = multiprocessing.cpu_count()
 
+    # Use a partial to pass 'self' into the worker
+    worker = partial(_worker_wrapper, obj=self)
+
+    with multiprocessing.Pool(processes=num_cores) as pool:
+      # imap_unordered is faster and allows us to stop early
+      for result in pool.imap_unordered(worker, range(self.n)):
+        if result is not None:
+          # Terminate the pool immediately once we find a match
+          pool.terminate()
+          return result
+    return None, {}, {}
+
+  def find_insplit_vertex_opt(self):
     v_to_graph_degree = {v:0 for v in range(self.n)}
     for se in range(self.n):
       for re in range(self.n):
@@ -255,16 +292,15 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
         v_to_graph_degree[re] += self.B_path_matrix.adj_matrix[se][re]
 
     v_sorted_by_degree = sorted( [(int(d),v) for v,d in v_to_graph_degree.items()] )
-    print("sorted?", v_sorted_by_degree)
 
     for _,v in v_sorted_by_degree:
       print("Trying with v=",v)
-      #E1, E2 =  self.matching_partition(v)
       E1, E2 =  self.matching_partition_opt(v)
-      #E1, E2 =  self.matching_partition_parallel(v)
       if len(E1)>0 and len(E2)>0:
         return v, E1, E2
     return None,{},{}
+
+
 
   def matching_partition_opt(self, v):
       R_edges, B_edges, R_vecs, B_vecs = self.get_source_profile_vectors(v)
@@ -470,3 +506,63 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       return A,B
     except ValueError:
       print("Invalid input. Please enter integers only.")
+
+
+  def matching_partition_claude(self, v):
+    '''Get source profile vectors then find a proper partition of
+    incoming edges into E1, E2 such that the sum of red vectors in E1
+    equals the sum of blue vectors in E1.
+
+    Optimizations vs original:
+      - numpy for fast vector arithmetic
+      - Precompute ALL blue subset sums into a hash dict (O(1) lookup)
+      - Iterate only red subsets; each red_sum is a single dict lookup
+      - Skip trivial (empty / full-set) partitions via set arithmetic
+    '''
+    R_edges, B_edges, R_vecs, B_vecs = self.get_source_profile_vectors(v)
+    all_incoming = list(set(R_edges) | set(B_edges))
+    if len(all_incoming) < 2:
+      return None
+
+    # --- Shortcut: isolate any edge whose vector is all zeros ---
+    for edge in all_incoming:
+      vec = R_vecs.get(edge) or B_vecs.get(edge)
+      if not any(vec):            # faster than all(x==0 for x in vec)
+        E1 = {edge}
+        return E1, set(all_incoming) - E1
+
+    m, n = len(R_edges), len(B_edges)
+
+    # --- Convert to numpy arrays once ---
+    R_arrs = [np.array(R_vecs[e], dtype=np.int64) for e in R_edges]
+    B_arrs = [np.array(B_vecs[e], dtype=np.int64) for e in B_edges]
+    zero   = np.zeros(self.n, dtype=np.int64)
+
+    # --- Precompute every blue subset sum (2ⁿ entries) ---
+    # Maps tuple(blue_sum) -> (r_indices, b_indices) for the first hit found.
+    # We record b_indices here; r_indices gets filled in the red loop.
+    blue_sums: dict[tuple, tuple] = {}
+    for b_size in range(n + 1):
+      for J_sub in itertools.combinations(range(n), b_size):
+        b_sum = sum((B_arrs[j] for j in J_sub), zero.copy())
+        key   = tuple(b_sum)
+        if key not in blue_sums:      # keep first (smallest) match
+          blue_sums[key] = J_sub
+
+    # --- Iterate red subsets; O(1) lookup into blue_sums ---
+    for r_size in range(m + 1):
+      for I_sub in itertools.combinations(range(m), r_size):
+        r_sum = sum((R_arrs[i] for i in I_sub), zero.copy())
+        J_sub = blue_sums.get(tuple(r_sum))
+        if J_sub is None:
+          continue
+
+        E1 = (
+          {R_edges[i] for i in I_sub} |
+          {B_edges[j] for j in J_sub}
+        )
+        # Must be a *proper* subset (not empty, not everything)
+        if E1 and E1 != set(all_incoming):
+          return E1, set(all_incoming) - E1
+
+    return {}, {}
