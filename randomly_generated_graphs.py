@@ -4,17 +4,6 @@ from InsplitTwoGraph import InsplitTwoGraph
 from RandomlyGeneratedTwoGraph import RandomlyGeneratedTwoGraph
 from calculate_h1 import *
 
-def print_adj_matrix(g):
-  A = [[0 for _ in range(len(g.vertices))] for _ in range(len(g.vertices))]
-  for edge in g.edges:
-    A[edge.s][edge.r] += 1
-  out = '['
-  for r in A:
-    for c in r:
-      out += str(c) + ' '
-    out += ']\n['
-  print('\n',out[:-1])
-
 
 def calc_homology(g, insplit=False):
   if insplit:
@@ -25,13 +14,9 @@ def calc_homology(g, insplit=False):
   res_gemini = calculate_h1_gemini(g.d_1.matrix, g.d_2.matrix)
   H1_gemini=res_gemini['result']
   H1_claude = calculate_h1_claude(g.d_1.matrix, g.d_2.matrix)
-  H2_str=g.d_2.ker_str # str
+  H2_str=g.d_2.ker_str
 
-  print("H1:")
-  print(f"Gemini: H1 = {H1_gemini}")
-  print(f"Claude: {H1_claude}")
-  print('H2 = ' + H2_str)
-  print()
+  return {'H1 gemini':H1_gemini, 'H1 claude':H1_claude, 'H2':H2_str}
 
 
 def calc_homology_and_insplit_homology(n, z):
@@ -39,25 +24,27 @@ def calc_homology_and_insplit_homology(n, z):
   g = RandomlyGeneratedTwoGraph(n,z)
 
   print("Randomly generated graph full adjacency matrix:")
-  print_adj_matrix(g)
+
 
   print("######## INSPLITTING ###########")
   if g.is_legit:
     gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
 
-    print("Initial graph commuting squares")
-    for cs in g.commuting_squares:
-      print(cs)
-    print()
-    # print("INSPLIT  graph commuting squares")
-    # for cs in gi.commuting_squares:
-    #   print(cs)
-
-    print("Homologies...")
     print("Calculating homology of random graph...")
-    calc_homology(g)
+    g_homology = calc_homology(g)
     print("Calculating homology of the insplit of the random graph...")
-    calc_homology(gi, insplit=True)
+    gi_homology= calc_homology(gi, insplit=True)
+
+    if (g_homology['H1 gemini'] != gi_homology['H1 gemini']) and (g_homology['H1 claude'] != gi_homology['H1 claude']) and (g_homology['H2'] != gi_homology['H2']):
+      fname = './graphs/'
+      fname += g_homology['H1 gemini']
+      fname += ' ' + gi_homology['H1 gemini']
+      fname += ' ' + gi_homology['H2']
+      name += 'n_vertices=' + str(g.n)
+      name += 'z=' + str(g.z)
+      name += '.txt'
+      g.save_to_file('Original graph ' + fname)
+      gi.save_to_file('Insplit graph ' + fname)
 
 
 if __name__ == "__main__":
