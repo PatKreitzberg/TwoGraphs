@@ -3,34 +3,21 @@ from Edge import Edge
 from CommutingSquare import CommutingSquare
 
 class InsplitTwoGraph(TwoGraph):
-  def __init__(self, g, v=None, E1=None, E2=None):
+  def __init__(self, g, v, E1, E2):
     super().__init__()
     # og_graph is the graph we are going to insplit
     # v is the vertex at which we insplit
 
-    self.E1, self.E2 = {},{}
-
-    if v is None:
-      v,self.E1, self.E2 = self.find_insplit_vertex(g)
-    else:
-      self.E1, self.E2 = self.partition_pairs(v)
+    self.E1 = E1
+    self.E2 = E2
+    self.v = v
 
     assert len(self.E1&self.E2) == 0
     assert len(self.E1) > 0
     assert len(self.E2) > 0
 
-    self.vetices, self.edges, self.commuting_squares = self.insplit(g,v)
-    self.calculate_boundary_matrices(list(vertices_as_set), {edge.label:edge for edge in edges}, commuting_squares)
-
-  def find_insplit_vertex(self, g):
-    E1, E2 = {}, {}
-    for v in g.vertices:
-      E1, E2 = self.partition_pairs(v)
-      print("E1,E2",E1,E2)
-
-      if (len(E1) != 0) and (len(E2) != 0) and (len(E1&E2) == 0):
-        return v, E1, E2
-    return -1,{},{}
+    self.vertices, self.edges, self.commuting_squares = self.insplit(g,v)
+    self.calculate_boundary_matrices()
 
   def insplit(self, g, v):
     #Add vertices to graph
@@ -40,7 +27,7 @@ class InsplitTwoGraph(TwoGraph):
 
     # MODIFY EDGES
     s_inv_e = set(g.source_inverse_of_vertex(v))
-    edges, edge_to_children_edges = self.add_insplit_edges(set(g.range_inverse_of_vertex(v)), s_inv_e, set(g.edges), new_vertices, v, E1, E2)
+    edges, edge_to_children_edges = self.add_insplit_edges(set(g.range_inverse_of_vertex(v)), s_inv_e, set(g.edges), new_vertices, v)
 
     # COMMUTING SQUARES
     commuting_squares = self.add_insplit_commuting_squares(v, g.commuting_squares, edge_to_children_edges)
@@ -117,7 +104,7 @@ class InsplitTwoGraph(TwoGraph):
     vertices |= set(new_vertices)
     return vertices
 
-  def add_insplit_edges(self, r_inv_e, s_inv_e, edges, new_vertices, v, E1, E2):
+  def add_insplit_edges(self, r_inv_e, s_inv_e, edges, new_vertices, v):
     '''
     We have a specific vertex v
     v is replaced with v^1, v^2
@@ -141,9 +128,9 @@ class InsplitTwoGraph(TwoGraph):
     '''
     # edge in Ei need their range set to v^i
     for e in edges:
-      if e in E1:
+      if e in self.E1:
         e.r = new_vertices[0]
-      if e in E2:
+      if e in self.E2:
         e.r = new_vertices[1]
 
     return edges

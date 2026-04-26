@@ -40,6 +40,9 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     n_rb_paths = sum([sum([len(col) for col in row]) for row in self.BR_paths_matrix])
     assert n_commuting_squares == n_rb_paths
 
+    self.v = v
+    self.E1 = E1
+    self.E2 = E2
     self.vertices = {i for i in range(n)}
     self.edges = {edge for edge in self.R_path_matrix.edges + self.B_path_matrix.edges}
     self.commuting_squares = commuting_squares

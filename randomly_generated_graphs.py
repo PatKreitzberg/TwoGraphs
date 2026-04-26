@@ -63,4 +63,5 @@ if __name__ == "__main__":
   random.seed(seed)
   g = RandomlyGeneratedTwoGraph(n,z)
   print_adj_matrix(g)
+  gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
   # calc_homology_and_insplit_homology(n, z)
