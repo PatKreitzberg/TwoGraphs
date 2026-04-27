@@ -1,12 +1,16 @@
 from TwoGraph import TwoGraph
 from Edge import Edge
 from CommutingSquare import CommutingSquare
+import copy
 
 class InsplitTwoGraph(TwoGraph):
-  def __init__(self, g, v, E1, E2):
+  def __init__(self, g_, v, E1, E2):
     super().__init__()
     # og_graph is the graph we are going to insplit
     # v is the vertex at which we insplit
+
+    g = copy.deepcopy(g_)
+
     self.E1 = E1
     self.E2 = E2
     self.v = v
