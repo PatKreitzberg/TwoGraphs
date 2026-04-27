@@ -1,0 +1,42 @@
+      R = [[1, 1],[1, 2]]
+      B = R
+Red edge adjacency matrix
+[[1, 1]
+[1, 2]]
+Blue edge adjacency matrix
+[[1, 1]
+[1, 2]]
+Trying with v= 0
+v is 0
+Calculating homology...
+G homology: 
+H0 Z, 
+H1 Z^5 
+H2 Z^9 
+In homology:
+H0 Z, 
+H1 Z^6 
+H2 Z^12
+
+
+      R = [[0, 1],[1, 2]]
+      B = R
+Also diff
+
+
+[[1, 1]
+[1, 1]]
+Blue edge adjacency matrix
+[[1, 1]
+[1, 1]]
+Trying with v= 0
+v is 0
+Calculating homology...
+G homology: 
+H0 Z, 
+H1 Z x Z x Z x Z 
+H2 Z^5 
+In homology:
+H0 Z, 
+H1 Z^5 
+H2 Z^7
