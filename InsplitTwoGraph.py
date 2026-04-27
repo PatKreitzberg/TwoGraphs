@@ -9,6 +9,7 @@ class InsplitTwoGraph(TwoGraph):
     # og_graph is the graph we are going to insplit
     # v is the vertex at which we insplit
 
+    # so changing vertices doesn't affect the original graph g
     g = copy.deepcopy(g_)
 
     self.E1 = E1

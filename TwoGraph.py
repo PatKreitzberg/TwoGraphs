@@ -19,13 +19,12 @@ class TwoGraph:
     self.R_degree = 1
     self.B_degree = 2
 
-
     if type(load_from) is str: # parse from graph
       vertices, edge_label_to_edge, commuting_squares = self.parse(load_from)
-      self.vertices = list(vertices)
+      self.vertices = list(sorted(vertices))
       self.n = len(self.vertices)
-      self.edges = list(edge_label_to_edge.values())
-      self.commuting_squares = list(commuting_squares)
+      self.edges = list(sorted(edge_label_to_edge.values()))
+      self.commuting_squares = list(sorted(commuting_squares))
       self.calculate_boundary_matrices()
     else:
       pass
@@ -50,7 +49,7 @@ class TwoGraph:
       f.write(str(deg_1_str) + '\n' + str(deg_2_str) + nl)
       f.write('# commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>'+nl)
       for cs in self.commuting_squares:
-        f.write(str(cs.s1) +' '+ str(cs.r1) +' '+  str(cs.s2) +' '+  str(cs.r2) + nl)
+        f.write(str(cs.s1) +' '+ str(cs.r1) +' ~  '+  str(cs.s2) +' '+  str(cs.r2) + nl)
 
       if insplit_v is not None:
         f.write("#notes" + nl + 'insplit-v  ' + str(insplit_v))
