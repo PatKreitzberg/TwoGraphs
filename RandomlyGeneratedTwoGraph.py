@@ -1,6 +1,4 @@
 import numpy as np
-import itertools
-import collections
 from collections import defaultdict as dd
 import multiprocessing
 from functools import partial
@@ -17,9 +15,39 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     # z is an upper limit on number of edges in graph between any two (maybe non-distinct) vertices
     self.n = n
     self.z = z
-    self.is_legit = True
 
-    R,B = self.gen()
+    #R,B = self.gen()
+    R,B = None,None
+
+    # no torsion but all homology differs
+    if False:
+      self.n = 3
+      self.z = 3
+      R = [[1, 0, 2],[0, 1, 0],[0, 2, 1]]
+      B = [[2, 4, 4], [0, 2, 0],[0, 4, 2]]
+    elif False:
+      # torsion! and H1, H2 differ
+      self.n = 5
+      self.z = 3
+      R = [[1, 2, 0, 0, 0],[0, 1, 0, 0, 0],[0, 0, 1, 0, 0],[0, 0, 0, 1, 0],[2, 1, 0, 0, 1]]
+      B = [[2, 4, 0, 0, 0],[0, 2, 0, 0, 0],[0, 0, 2, 0, 0],[0, 0, 0, 2, 0],[4, 6, 0, 0, 2]]
+    elif 0:
+      self.n = 2
+      self.z = 3
+      R = [[1,1],[1, 1]]
+      B = R
+    elif 0:
+      B = R
+    elif 0:
+      R = [[2,0],[0, 0]]
+      B = R
+    elif 1:
+      R = [[2]]
+      B = R
+
+
+
+
 
     assert R is not None
     assert B is not None
@@ -34,14 +62,14 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     self.print_path_matrix(self.B_path_matrix.adj_matrix, "Blue edge adjacency matrix")
 
     if type(self) is RandomlyGeneratedTwoGraph:
-      self.commuting_squares = self.get_commuting_squares(v, E1,E2)
+      self.commuting_squares = self.get_commuting_squares()
       assert self.commuting_squares is not None
 
       n_commuting_squares = len(self.commuting_squares)
       n_rb_paths = sum([sum([len(col) for col in row]) for row in self.BR_paths_matrix])
       assert n_commuting_squares == n_rb_paths
 
-      self.vertices = {i for i in range(n)}
+      self.vertices = [i for i in range(n)]
       self.edges = {edge for edge in self.R_path_matrix.edges + self.B_path_matrix.edges}
       self.calculate_boundary_matrices()
 
@@ -101,7 +129,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       commuting_squares = self.commuting_square_for_vertices(RB_path, BR_path, commuting_squares)
     return commuting_squares
 
-  def get_commuting_squares(self, v, E1, E2):
+  def get_commuting_squares(self):
     '''
     Inputs:
     R,B PathMatrix objects
@@ -135,6 +163,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       # These operations preserve the determinant.
       for _ in range(self.n * 2):
         i, j = np.random.choice(self.n, size=2, replace=False)
+        # factor is what actually changes the values
         factor = np.random.randint(1, 3) # Small factors to keep entries manageable
         A[i] += factor * A[j]
 

@@ -22,7 +22,7 @@ class Edge:
   def __lt__(self, other):
     return self.label < other.label
 
-  def F(self, i,ell):
+  def F(self, i, ell):
     assert i == 1
     assert ell in [0,1]
     if ell == 0:

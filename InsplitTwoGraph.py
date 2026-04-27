@@ -7,7 +7,6 @@ class InsplitTwoGraph(TwoGraph):
     super().__init__()
     # og_graph is the graph we are going to insplit
     # v is the vertex at which we insplit
-
     self.E1 = E1
     self.E2 = E2
     self.v = v

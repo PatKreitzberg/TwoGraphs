@@ -4,7 +4,16 @@ from fractions import Fraction
 import math
 
 class BoundaryFunctionMatrix:
-  def __init__(self, graph, r, domain_items, range_items, domain_item_to_index, range_item_to_index, calc_ker=False, calc_img=False):
+  def __init__(self,
+               graph,
+               r,
+               domain_items,
+               range_items,
+               domain_item_to_index,
+               range_item_to_index,
+               calc_ker=False,
+               calc_img=False):
+
     self.r = r
     self.matrix = self.build_matrix(graph, domain_items, range_items, domain_item_to_index, range_item_to_index)
 
@@ -55,15 +64,19 @@ class BoundaryFunctionMatrix:
 
     n_range_items = len(range_items)
     n_domain_items = len(domain_items)
+    self.matrix_dim = (n_range_items, n_domain_items)
+
+    # one column for each domain item
+    # one row for each range item
     matrix = [[0]*n_domain_items for _ in range(n_range_items)] # matrix of all zeros
 
     for i in range(1, self.r+1):
       for domain_item in domain_items:
         domain_item_index = domain_item_to_index[domain_item]
+
         for ell in [0,1]:
           range_item_index = range_item_to_index[domain_item.F(i,ell)]
           matrix[range_item_index][domain_item_index] += self.increment(i,ell)
-
     return matrix
 
   def image_basis(self, A: list[list[int]]) -> list[list[int]]:

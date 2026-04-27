@@ -1,3 +1,34 @@
+### SAGE RESULTS ###
+Red edge adjacency matrix
+[[1, 0, 2]
+[0, 1, 0]
+[0, 2, 1]]
+Blue edge adjacency matrix
+[[2, 4, 4]
+[0, 2, 0]
+[0, 4, 2]]
+Trying with v= 0
+Trying with v= 2
+v is 2
+before range item to index keys dict_keys([0, 1, 2])
+before range item to index valus dict_values([0, 1, 2])
+before range item to index keys dict_keys([0, 1, '2^2', '2^1'])
+before range item to index valus dict_values([0, 1, 2, 3])
+Calculating homology of random graph...
+Calculating homology of the insplit of the random graph...
+G homology: 
+Sage H1 Z^7 
+H2 Z^18 
+H2 sage Z^18 
+In homology:
+Sage H1 Z^8 
+H2 Z^21 
+H2 sage Z^18 
+### END SAGE RESULTS ###
+
+
+
+
 RESULT 1:
 
 Generating random graphs...

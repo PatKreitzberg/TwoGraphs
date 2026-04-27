@@ -19,9 +19,11 @@ class TwoGraph:
     self.R_degree = 1
     self.B_degree = 2
 
+
     if type(load_from) is str: # parse from graph
       vertices, edge_label_to_edge, commuting_squares = self.parse(load_from)
       self.vertices = list(vertices)
+      self.n = len(self.vertices)
       self.edges = list(edge_label_to_edge.values())
       self.commuting_squares = list(commuting_squares)
       self.calculate_boundary_matrices()
@@ -34,21 +36,21 @@ class TwoGraph:
     '''
     nl = '\n'
     with open(filename, 'w+') as f:
-      f.write('# edges of the form <edge label> <source vertex> <range vertex>')
+      f.write('# edges of the form <edge label> <source vertex> <range vertex>' + nl)
       deg_1_str = '1 '
-      deg_2_str = '1 '
+      deg_2_str = '2 '
       for e in self.edges:
-        f.write(e.label + ' ' + e.r + ' ' + e.s + nl)
+        f.write(e.label + ' ' + str(e.r) + ' ' + str(e.s) + nl)
         if e.degree == 1:
           deg_1_str += e.label + ' '
         if e.degree == 2:
           deg_2_str += e.label + ' '
       f.write('')
-      f.write('# degrees  of the form <degree> <edge> <edge>...')
-      f.write(deg_1_str + '\n' + deg_2_str + nl)
-      f.write('# commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>')
+      f.write('# degrees  of the form <degree> <edge> <edge>...'+nl)
+      f.write(str(deg_1_str) + '\n' + str(deg_2_str) + nl)
+      f.write('# commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>'+nl)
       for cs in self.commuting_squares:
-        f.write(cs.s1 +' '+ cs.r1 +' '+  cs.s2 +' '+  cs.r2 + nl)
+        f.write(str(cs.s1) +' '+ str(cs.r1) +' '+  str(cs.s2) +' '+  str(cs.r2) + nl)
 
       if insplit_v is not None:
         f.write("#notes" + nl + 'insplit-v  ' + str(insplit_v))
@@ -78,7 +80,6 @@ class TwoGraph:
     self.print_path_matrix(R, "Red adjacency matrix for" + title)
     self.print_path_matrix(B, "Blue adjacency matrix for" + title)
 
-
   def range_inverse_of_vertex(self, v):
     assert len(self.edges) > 0
     assert v in self.vertices
@@ -99,8 +100,8 @@ class TwoGraph:
     self.d_1 = BoundaryFunctionMatrix(
       self,
       1, # r = 1 so going from edges to vertices
-      self.edges,
-      self.vertices,
+      self.edges, #domain
+      self.vertices, #range
       self.edge_to_index,
       self.vertex_to_index,
       calc_ker=False,
@@ -109,10 +110,10 @@ class TwoGraph:
     self.d_2 = BoundaryFunctionMatrix(
       self,
       2, # r = 1 so going from edges to vertices
-      self.commuting_squares,
-      self.edges,
-      self.commuting_square_to_index,
-      self.edge_to_index,
+      self.commuting_squares, #domain items
+      self.edges, #range items
+      self.commuting_square_to_index, #domain
+      self.edge_to_index, #range
       calc_ker=True,
       calc_img=False
     )
