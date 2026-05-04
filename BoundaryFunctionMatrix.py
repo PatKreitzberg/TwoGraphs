@@ -3,6 +3,7 @@ from sympy.matrices.normalforms import smith_normal_form, hermite_normal_form
 from fractions import Fraction
 import math
 from CommutingSquare import CommutingSquare
+from sage.all import matrix,ZZ
 
 class BoundaryFunctionMatrix:
   def __init__(self,
@@ -32,21 +33,22 @@ class BoundaryFunctionMatrix:
     if calc_img:
       self.calc_img()
 
-
     if calc_ker:
       self.calc_ker()
 
   def calc_ker(self):
     if self.ker is None:
-      self.ker = self.kernel_basis(self.matrix)
+      A = matrix(self.matrix)
+      self.ker =  [list(v) for v in A.right_kernel().basis()]
     self.ker_str_items = self.partial_span_as_str(self.ker, self.domain_items)
     self.ker_str = f"Z^{len(self.ker)}"
     return self.ker
 
   def calc_img(self):
     if self.img is None:
-      self.img = self.image_basis(self.matrix)
-    self.img_str_items = self.partial_span_as_str(self.img, self.range_items)
+      A = matrix(self.matrix)
+      self.img = [list(v) for v in A.column_space().basis()]
+      self.img_str_items = self.partial_span_as_str(self.img, self.range_items)
     return self.img
 
   def __str__(self):
@@ -122,15 +124,16 @@ class BoundaryFunctionMatrix:
         if span_vec[item_index] != 0:
           if span_vec[item_index] == 1:
             span_vec_str +=  '$' + str(items[item_index]) + '$'
+
           elif span_vec[item_index] == -1:
             span_vec_str += '$-' + str(items[item_index]) + '$'
-          else:
-            span_vec_str +=  + '$'+str(span_vec[item_index]) + str(items[item_index]) + '$'
-          span_vec_str += ' + '
 
+          else:
+            span_vec_str +=   '$'+str(span_vec[item_index]) + str(items[item_index]) + '$'
+
+          span_vec_str += ' + '
       if span_vec_str.endswith(' + '):
         span_vec_str = span_vec_str[:-2]
-      #print(span_vec_str)
       out += span_vec_str + ', '
     if out == "":
       return "{0}"

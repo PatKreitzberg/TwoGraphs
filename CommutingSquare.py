@@ -53,6 +53,8 @@ class CommutingSquare:
       return self.path1[i]
     return self.path2[i-2]
 
+  def latex_str(self):
+    return latex_label
 
   def F(self, i, ell):
     # i is degree index

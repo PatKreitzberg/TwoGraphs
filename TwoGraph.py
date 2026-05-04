@@ -39,7 +39,7 @@ class TwoGraph:
       deg_1_str = '1 '
       deg_2_str = '2 '
       for e in self.edges:
-        f.write(e.label + ' ' + str(e.r) + ' ' + str(e.s) + nl)
+        f.write(e.label + ' ' + str(e.s) + ' ' + str(e.r) + nl)
         if e.degree == 1:
           deg_1_str += e.label + ' '
         if e.degree == 2:
@@ -49,7 +49,7 @@ class TwoGraph:
       f.write(str(deg_1_str) + '\n' + str(deg_2_str) + nl)
       f.write('# commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>'+nl)
       for cs in self.commuting_squares:
-        f.write(str(cs.s1) +' '+ str(cs.r1) +' ~  '+  str(cs.s2) +' '+  str(cs.r2) + nl)
+        f.write(str(cs.label) + '\n')
 
       if insplit_v is not None:
         f.write("#notes" + nl + 'insplit-v  ' + str(insplit_v))

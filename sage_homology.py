@@ -1,5 +1,6 @@
 import sys, random
 import numpy as np
+from argparse import ArgumentParser
 
 from sage.all import matrix, ZZ, ChainComplex
 from RandomlyGeneratedTwoGraphForInsplitting import RandomlyGeneratedTwoGraphForInsplitting
@@ -16,8 +17,9 @@ def calc_homology(g):
   H2 = C.homology(2)
   return {'H0':H0, 'H1':H1, 'H2':H2}
 
-def save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2):
+def save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend=''):
     fname = './graphs/'
+    fname += prepend
     fname += 'n_vertices=' + str(g.n)
     fname += ' GH1:' +str(g_H1)
     fname += ' GH2:' +str(g_H2)
@@ -40,9 +42,8 @@ def save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2):
           f.write(' GH1:' +str(g_H1) + "\n")
           f.write(' GH2:' +str(g_H2) + "\n")
           f.write(' GIH1:' +str(gi_H1) + "\n")
-          f.write(' GIH2' +str(gi_H2) + "\n")
+          f.write(' GIH2:' +str(gi_H2) + "\n")
           f.close()
-        exit()
 
     elif g_H2 !=  gi_H2:
       print("Diff H2!")
@@ -51,14 +52,15 @@ def save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2):
 
 
 
-def gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs):
+def gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric):
+  print("n=", n, "z=", z)
   for run in range(runs):
-    print("Run", run)
-    g = RandomlyGeneratedTwoGraphForInsplitting(n,z)
+    print('run', run)
+    g = RandomlyGeneratedTwoGraphForInsplitting(n,z, symmetric=symmetric)
 
     if not g.is_legit:
       print("No insplit vertex found!")
-      return
+      continue
 
     gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
 
@@ -67,9 +69,30 @@ def gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs):
     g_H0,  g_H1,  g_H2 =  g_homology['H0'],  g_homology['H1'], g_homology['H2']
     gi_H0, gi_H1, gi_H2 = gi_homology['H0'], gi_homology['H1'], gi_homology['H2']
 
-    print(f"G homology: \nH0 {g_H0}, \nH1 {g_H1} \nH2 {g_H2} ")
-    print(f"In homology:\nH0 {gi_H0}, \nH1 {gi_H1} \nH2 {gi_H2}")
-    save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2)
+
+    if 'C' in str(gi_H1) or 'C' in str(g_H1):
+      print(f"G homology: \nH0 {g_H0}, \nH1 {g_H1} \nH2 {g_H2} ")
+      print(f"In homology:\nH0 {gi_H0}, \nH1 {gi_H1} \nH2 {gi_H2}")
+
+      print("Red matrix")
+      for r in g.R:
+        print(r)
+      print()
+      print("Blue matrix")
+      for r in g.B:
+        print(r)
+      print()
+
+      if g_H1 != gi_H1:
+        print("Has torsion and different homologies!")
+        save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2)
+
+
+      if 'C' in str(g_H1) and 'C' not in str(gi_H1):
+        print("WOW torsion in g_H1 but not gi_H1!")
+        save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='torsion-in-og-not-insplit')
+        exit()
+
 
 
 def premade_graphs(self, og, ig):
@@ -77,138 +100,31 @@ def premade_graphs(self, og, ig):
   gi = TwoGraph(ig)
 
 
-
 if __name__ == "__main__":
-  # Generate random
-  if '-random' in sys.argv:
-    runs = 1
-    if len(sys.argv) == 5:
-      runs = int(sys.argv[4])
+  parser = ArgumentParser()
+  subparsers = parser.add_subparsers(dest="command", required=True)
 
-    n = int(sys.argv[2])
-    z = int(sys.argv[3])
-    gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs)
-  elif '-files' in sys.argv:
-    premade_graphs(sys.argv[2], sys.argv[3])
-  else:
-    print("Usage:  -random <n: number vertices> <z: roughly upper bounds on number edges> [number of runs]")
-    print("Usage: -files <file name of original graph> <file name of insplit graph>")
-    sys.exit(1)
+  # parse for when given files
+  file_parser = subparsers.add_parser('files', help='Parser for randomly generated graphs')
+  file_parser.add_argument("files", nargs=2, help="Generate random graphs")
 
+  # parse for randomly generated
+  runs_help = 'Number of runs (generate matrices and calc homology)'
+  s_help = 'Make the red and blue adjacency matrices the same'
+  random_parser = subparsers.add_parser('random', help='Parser for randomly generated graphs')
+  random_parser.add_argument("n",      type=int,                  help='Number verices')
+  random_parser.add_argument("z",       type=int,                  help='Entries in adj. matrices will be in [0,z]')
+  random_parser.add_argument("runs",  type=int, default=1, help=runs_help)
+  random_parser.add_argument("-s", "--symmetric", dest='symmetric',  required=False, default=False, action='store_true', help=s_help)
 
+  args = parser.parse_args()
+  if args.command == 'random':
+    n = args.n
+    z = args.z
+    runs = args.runs
+    symmetric = args.symmetric
+    gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric)
 
-'''
-Prompt for LaTex:
-
-I am writing a python script which calculates the homology of a
-2-graph. I give you the classes for Edge and Commuting
-squares. Commuting squares are of the form <range edge> <source edge>
-~ < range edge> < source edge>
-
-I have a TwoGraph class which has attributes vertices, edges, and commuting_squares which are lists of those items
-
-if g is an instanec of TwoGraph, I calculate the homology using Sage:
-  d1 = matrix(ZZ, g.d_1.matrix)
-  d2 = matrix(ZZ, g.d_2.matrix)
-  C = ChainComplex({1: d1, 2: d2}, degree=-1)
-  H0 = C.homology(0)
-  H1 = C.homology(1)
-  H2 = C.homology(2)
-
-
-Your task: Write a python function which uses these to produce a latex
-file that writes out the partial matrices and
-
-
-class CommutingSquare:
-  def __init__(self, r1, s1, r2, s2):
-    # commuting squares need to have same source and range
-    assert r1.r == r2.r
-    assert s1.s == s2.s
-
-    self.__setattr__('s1', s1)
-    self.__setattr__('r1', r1)
-    self.__setattr__('s2', s2)
-    self.__setattr__('r2', r2)
-    self.__setattr__('path1', (r1, s1))
-    self.__setattr__('path2', (r2, s2))
-    self.__setattr__('label', '(' + r1.label + ' ' + s1.label + ' ~ ' + r2.label + ' ' + s2.label + ')')
-
-    assert self.path1[0].degree == self.path2[1].degree
-    assert self.path1[1].degree == self.path2[0].degree
-
-    self.degree_indices = set([r1.degree, s1.degree, r2.degree, s2.degree])
-
-  def __setattr__(self, name, value):
-    if hasattr(self, name):
-      print("WARNING: Changed", name)
-      raise AttributeError(f"{name} is immutable")
-    super().__setattr__(name, value)
-
-  def __eq__(self, other):
-    return (self.path1 == other.path1) and (self.path2 == other.path2)
-
-  def __contains__(self, edge):
-    assert type(edge) is Edge
-    return (edge in self.path1) or (edge in self.path2)
-
-  def __hash__(self):
-    return hash(self.label)
-
-  def __str__(self):
-    return self.label
-
-  def __getitem__(self, i):
-    assert i < 4
-    if i <= 1:
-      return self.path1[i]
-    return self.path2[i-2]
-
-
-  def F(self, i, ell):
-    # i is degree index
-    assert i in self.degree_indices
-    assert ell in [0,1]
-
-    ell_index = (ell+1)%2 # Because F_i^0 should be the range edge
-
-    if self.path1[ell_index].degree == i:
-      return self.path1[ell_index]
-
-    return self.path2[ell_index]
-
-
-class Edge:
-  def __init__(self, label, s, r, degree=None):
-    # label is string name of edge
-    # s is source vertex
-    # r is range vertex
-
-    self.label = label
-    self.s = s # source of edge
-    self.r = r # range of edge
-    self.degree = degree
-    self.range_of_commuting_squares = set()
-    self.commuting_squares = set()
-
-  def __contains__(self, v):
-    return (v == self.s) or (v == self.r)
-  def __str__(self):
-    return self.label
-  def __eq__(self, other):
-    return self.label == other.label
-  def __hash__(self):
-    return hash(self.label)
-  def __lt__(self, other):
-    return self.label < other.label
-
-  def F(self, i, ell):
-    assert i == 1
-    assert ell in [0,1]
-    if ell == 0:
-      return self.r
-    if ell == 1:
-      return self.s
-
-
-'''
+  elif args.command == 'files':
+    og_file,insplit_file = args.files
+    premade_graphs(og_file, insplit_file)

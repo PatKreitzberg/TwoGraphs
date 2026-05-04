@@ -16,6 +16,9 @@ class InsplitTwoGraph(TwoGraph):
     self.E2 = E2
     self.v = v
 
+    # print('E1=', [str(ind) for ind in self.E1])
+    # print('E2=', [str(ind) for ind in self.E2])
+
     assert len(self.E1&self.E2) == 0
     assert len(self.E1) > 0
     assert len(self.E2) > 0
@@ -120,7 +123,6 @@ class InsplitTwoGraph(TwoGraph):
     Edges with SOURCE V:
       If s(e) = v then need to duplicate e and
     '''
-
     edges = self.add_insplit_range_edges(r_inv_e, new_vertices, edges, v)
     edges, edge_to_children_edges = self.add_insplit_source_edges(edges, s_inv_e, v, new_vertices)
     return edges, edge_to_children_edges

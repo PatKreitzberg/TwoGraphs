@@ -6,20 +6,28 @@ from InsplitTwoGraph import InsplitTwoGraph
 from RandomlyGeneratedTwoGraph import RandomlyGeneratedTwoGraph
 from TwoGraph import TwoGraph
 
+
 def print_graph(g):
   g_d1_str = g.d_1.latex()
   g_d2_str = g.d_2.latex()
   g.d_1.calc_img()
   g.d_1.calc_ker()
+  g.d_2.calc_img()
+  g.d_2.calc_ker()
 
   print(g_d1_str)
   print()
   print(g_d2_str)
   print()
 
-  print("Img", g.d_1.img_str_items)
+  print("$\img\partial_{1}=$ \{", g.d_1.img_str_items, '\}')
   print()
-  print("Ker", g.d_1.ker_str_items)
+  print("$\ker\partial_{1}=$ \{", g.d_1.ker_str_items, '\}')
+  print()
+  print("$\img\partial_{2}=$ \{", g.d_2.img_str_items, '\}')
+  print()
+  print("$\ker\partial_{2}=$ \{", g.d_2.ker_str_items, '\}')
+  print()
 
 def premade_graphs(og, ig):
   g = TwoGraph(og)

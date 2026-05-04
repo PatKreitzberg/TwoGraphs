@@ -6,7 +6,8 @@ from collections import defaultdict as dd
 import multiprocessing
 from functools import partial
 import time,datetime
-
+from CommutingSquare import CommutingSquare
+from Edge import Edge
 
 def _worker_wrapper(v, obj):
   """
@@ -21,15 +22,18 @@ def _worker_wrapper(v, obj):
 
 
 class RandomlyGeneratedTwoGraphForInsplitting(RandomlyGeneratedTwoGraph):
-  def __init__(self, n, z):
-    super().__init__(n,z)
+  def __init__(self, n, z, R=None, B=None, symmetric=False):
+    super().__init__(n,z, R=R, B=B, symmetric=symmetric)
+
     self.time_limit_seconds = datetime.timedelta(seconds=10)
     # Find vertex which can be partitioned at
-    #v,E1,E2 = self.find_insplit_vertex()
+    # v,E1,E2 = self.find_insplit_vertex()
+
     v,E1,E2 = self.find_insplit_vertex_opt()
-    print("E1", [str(e) for e in E1])
-    print("E2", [str(e) for e in E2])
-    print(f"v is {v}")
+    # print("E1", [str(e) for e in E1])
+    # print("E2", [str(e) for e in E2])
+    # print(f"v is {v}")
+
     self.is_legit = True
     if v is None:
       self.is_legit = False
@@ -54,6 +58,7 @@ class RandomlyGeneratedTwoGraphForInsplitting(RandomlyGeneratedTwoGraph):
       self.vertices = [i for i in range(n)]
       self.edges = {edge for edge in self.R_path_matrix.edges + self.B_path_matrix.edges}
       self.commuting_squares = commuting_squares
+
       self.calculate_boundary_matrices()
 
 
@@ -337,10 +342,10 @@ class RandomlyGeneratedTwoGraphForInsplitting(RandomlyGeneratedTwoGraph):
         v_to_graph_degree[re] += self.R_path_matrix.adj_matrix[se][re]
         v_to_graph_degree[re] += self.B_path_matrix.adj_matrix[se][re]
 
-    v_sorted_by_degree = sorted( [(int(d),v) for v,d in v_to_graph_degree.items()] )
+    #v_sorted_by_degree = sorted( [(int(d),v) for v,d in v_to_graph_degree.items()] )
+    v_sorted_by_degree =  [(int(d),v) for v,d in v_to_graph_degree.items()]
 
     for _,v in v_sorted_by_degree:
-      print("Trying with v=",v)
       E1, E2 =  self.matching_partition_opt(v)
       if len(E1)>0 and len(E2)>0:
         return v, E1, E2

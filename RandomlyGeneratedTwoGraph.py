@@ -9,45 +9,32 @@ from PathMatrix import PathMatrix
 from CommutingSquare import CommutingSquare
 
 class RandomlyGeneratedTwoGraph(TwoGraph):
-  def __init__(self, n, z):
+  def __init__(self, n, z, R=None, B=None, symmetric=False):
     super().__init__()
     # n is number of vertices
     # z is an upper limit on number of edges in graph between any two (maybe non-distinct) vertices
     self.n = n
     self.z = z
 
-    #R,B = self.gen()
-    R,B = None,None
+    if R is None:
+      #R,B = self.gen()
+      R,B = self.generate_adjacency_matrices(symmetric)
+      assert (R*B).all() == (B*R).all()
 
-    # no torsion but all homology differs
+    R = B
+    self.R = R
+    self.B = B
+    assert self.n == len(R)
+
     if False:
-      self.n = 3
-      self.z = 3
-      R = [[1, 0, 2],[0, 1, 0],[0, 2, 1]]
-      B = [[2, 4, 4], [0, 2, 0],[0, 4, 2]]
-    elif False:
-      # torsion! and H1, H2 differ
-      self.n = 5
-      self.z = 3
-      R = [[1, 2, 0, 0, 0],[0, 1, 0, 0, 0],[0, 0, 1, 0, 0],[0, 0, 0, 1, 0],[2, 1, 0, 0, 1]]
-      B = [[2, 4, 0, 0, 0],[0, 2, 0, 0, 0],[0, 0, 2, 0, 0],[0, 0, 0, 2, 0],[4, 6, 0, 0, 2]]
-    elif 0:
-      self.n = 2
-      self.z = 3
-      R = [[1,1],[1, 1]]
-      B = R
-    elif 0:
-      B = R
-    elif 0:
-      R = [[2,0],[0, 0]]
-      B = R
-    elif 1:
-      R = [[2]]
-      B = R
-
-
-
-
+      print("Red matrix")
+      for r in R:
+        print(r)
+      print()
+      print("Blue matrix")
+      for r in B:
+        print(r)
+      print()
 
     assert R is not None
     assert B is not None
@@ -58,8 +45,8 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     self.RB_paths_matrix = self.R_path_matrix*self.B_path_matrix
     self.BR_paths_matrix = self.B_path_matrix*self.R_path_matrix
 
-    self.print_path_matrix(self.R_path_matrix.adj_matrix, "Red edge adjacency matrix")
-    self.print_path_matrix(self.B_path_matrix.adj_matrix, "Blue edge adjacency matrix")
+    # self.print_path_matrix(self.R_path_matrix.adj_matrix, "Red edge adjacency matrix")
+    # self.print_path_matrix(self.B_path_matrix.adj_matrix, "Blue edge adjacency matrix")
 
     if type(self) is RandomlyGeneratedTwoGraph:
       self.commuting_squares = self.get_commuting_squares()
@@ -74,7 +61,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       self.calculate_boundary_matrices()
 
 
-  def generate_adjacency_matrices(self, attempt=0):
+  def generate_adjacency_matrices(self, symmetric, attempt=0):
     ''''
     Generates adjacency matrices R and B
     R is just for red edges, B for blue edges
@@ -108,8 +95,11 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     min_a = np.min(A)
     # k must make all entries > 0. If min_a is 0, k=1. If min_a is -5, k=6.
     k = max(1, 1 - min_a)
-
-    B = A + k * np.eye(self.n, dtype=int)
+    B = None
+    if symmetric:
+      B = A
+    else:
+      B = A + k * np.eye(self.n, dtype=int)
     if sum(sum(np.dot(A, B) - np.dot(A, B))) != 0:
       return self.generate_adjacency_matrices(attempt=attempt+1)
     return A, B
@@ -164,7 +154,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       for _ in range(self.n * 2):
         i, j = np.random.choice(self.n, size=2, replace=False)
         # factor is what actually changes the values
-        factor = np.random.randint(1, 3) # Small factors to keep entries manageable
+        factor = np.random.randint(1, self.z) # Small factors to keep entries manageable
         A[i] += factor * A[j]
 
       # 3. Ensure entries are within roughly [0, z]

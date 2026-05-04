@@ -63,7 +63,7 @@ return empty E1 E2 commuting_squares
 
 
 
-To do so, the class has objects:
+To do so, the 2-graph class has objects:
 self.R_path_matrix is an adjacency matrix size self.n by self.n of just the red edges. An element self.R_path_matrix[i][j] is a list of red edges (Edge object whose class is written below)  from vertex i to vertex j.
 self.B_path_matrix is an adjacency matrix  self.n by self.n of just the blue edges. An element self.B_path_matrix[i][j] is a list of blue edges (Edge object whose class is written below)  from vertex i to vertex j.
 self.RB_paths_matrix = self.R_path_matrix*self.B_path_matrix  # is a matrix where self.RB_paths_matrix[i][j]  is a list of length two red-blue paths from vertex i to vertex j
