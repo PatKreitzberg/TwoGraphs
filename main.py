@@ -1,4 +1,5 @@
-import sys, random
+import re, ast
+import random
 import numpy as np
 from argparse import ArgumentParser
 
@@ -9,7 +10,7 @@ from python.InsplitTwoGraph import InsplitTwoGraph
 from python.RandomlyGeneratedTwoGraph import RandomlyGeneratedTwoGraph
 from python.TwoGraph import TwoGraph
 
-def sage_cohomology(g):
+def cohomology(g):
   d1 = matrix(ZZ, g.d_1.matrix)
   d2 = matrix(ZZ, g.d_2.matrix)
   cochain = ChainComplex({1: d1, 2: d2}, degree=-1,base_ring=ZZ).dual()
@@ -18,14 +19,14 @@ def sage_cohomology(g):
   C2 = cochain.homology(2)
   return C0,C1,C2
 
-def calc_homology(g):
+def homology(g):
   d1 = matrix(ZZ, g.d_1.matrix)
   d2 = matrix(ZZ, g.d_2.matrix)
   C = ChainComplex({1: d1, 2: d2}, degree=-1)
   H0 = C.homology(0)
   H1 = C.homology(1)
   H2 = C.homology(2)
-  return {'H0':H0, 'H1':H1, 'H2':H2}
+  return H0,H1,H2
 
 def save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend=''):
     fname = './results/graphs/'
@@ -37,9 +38,12 @@ def save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend=''):
     fname += ' GIH2' +str(gi_H2)
 
     fname += ' z=' + str(g.z)
-    end = ' ' + str(np.random.randint(0,1000000)) + '.txt'
+    end = ' ' + str(np.random.randint(0,10000000)) + '.txt'
     og_name = fname +' Original graph ' +  end
     ig_name = fname + ' insplit graph ' + end
+
+    og_name = og_name.replace(" ", "_")
+    ig_name = ig_name.replace(" ", "_")
 
     if (g_H1 !=  gi_H1) and (g_H2 !=  gi_H2):
         print(f"Diff homologies! Saving to \n{og_name} \nand\n{ig_name}")
@@ -55,59 +59,155 @@ def save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend=''):
           f.write(' GIH2:' +str(gi_H2) + "\n")
           f.close()
 
-    elif g_H2 !=  gi_H2:
-      print("Diff H2!")
-    else:
-      print("Same homology :(")
+def print_homology(H0,H1,H2, i_H0, i_H1, i_H2,is_cohomology):
+  if is_cohomology:
+    print(f"Cohomology Graph\tInsplit: \nH_0 {H0}\t\t{i_H0} \nH_1 {H1}\t\t{i_H1} \nH_2 {H2}\t\t{i_H2}")
+  else:
+    print(f"Homology Graph\tInsplit: \nH^0 {H0}\t\t{i_H0} \nH^1 {H1}\t\t{i_H1} \nH^2 {H2}\t\t{i_H2}")
+  print()
+
+def print_adj_matrices(R,B):
+  print("Red matrix")
+  for r in R:
+    print(r)
+  print()
+  print("Blue matrix")
+  for r in B:
+    print(r)
+  print()
+
+def verbose_output(g, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2):
+  print()
+  print("Verbose output")
+
+  # Print homology
+  print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
+
+  # Print cohomology
+  print_homology(g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2, True)
+
+  # Print the red and blue adjacency matrices
+  print_adj_matrices(g.R, g.B)
 
 
 
-def gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric):
-  print("n=", n, "z=", z)
-  for run in range(runs):
-    print('run', run)
-    g = RandomlyGeneratedTwoGraphForInsplitting(n,z, symmetric=symmetric)
+def parse_homology_rank(homology_obj):
+  """
+  Parses the string representation of a Sage homology group
+  to extract the free rank and the torsion value.
+  """
+  # Convert the object to a string
+  s = str(homology_obj)
 
-    if not g.is_legit:
-      print("No insplit vertex found!")
-      continue
+  # --- 1. Calculate Free Rank ---
+  free_rank = 0
 
-    gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
+  if "Z^" in s:
+    # Matches "Z^12" -> 12
+    match = re.search(r'Z\^(\d+)', s)
+    if match:
+      free_rank = int(match.group(1))
+  elif "Z x Z x Z x Z" in s:
+    free_rank = 4
+  elif "Z x Z x Z" in s:
+    free_rank = 3
+  elif "Z x Z" in s:
+    free_rank = 2
+  elif "Z" in s:
+    # Ensure we aren't just seeing a 'Z' inside 'Z^' or a 'C'
+    # This covers the single 'Z' case
+    free_rank = 1
+  else:
+    free_rank = 0
 
-    g_homology = calc_homology(g)
-    gi_homology = calc_homology(gi)
-    g_H0,  g_H1,  g_H2 =  g_homology['H0'],  g_homology['H1'], g_homology['H2']
-    gi_H0, gi_H1, gi_H2 = gi_homology['H0'], gi_homology['H1'], gi_homology['H2']
-
-
-    if 'C' in str(gi_H1) or 'C' in str(g_H1):
-      print(f"G homology: \nH0 {g_H0}, \nH1 {g_H1} \nH2 {g_H2} ")
-      print(f"In homology:\nH0 {gi_H0}, \nH1 {gi_H1} \nH2 {gi_H2}")
-
-      print("Red matrix")
-      for r in g.R:
-        print(r)
-      print()
-      print("Blue matrix")
-      for r in g.B:
-        print(r)
-      print()
-
-      if g_H1 != gi_H1:
-        print("Has torsion and different homologies!")
-        save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2)
+  # --- 2. Calculate Torsion ---
+  # Matches "C2", "C3", etc.
+  torsion_match = re.search(r'C(\d+)', s)
+  torsion = int(torsion_match.group(1)) if torsion_match else 0
+  return free_rank, torsion
 
 
-      if 'C' in str(g_H1) and 'C' not in str(gi_H1):
-        print("WOW torsion in g_H1 but not gi_H1!")
+def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h1_rank_gt=False):
+    # Get homology and cohomology
+    g_H0,  g_H1,  g_H2 = homology(g)
+    gi_H0, gi_H1, gi_H2 = homology(gi)
+    g_C0,  g_C1,  g_C2 = cohomology(g)
+    gi_C0, gi_C1, gi_C2 = cohomology(gi)
+
+    # Get rank and torsion
+    g_H1_rank,  g_H1_torsion = parse_homology_rank(g_H1)
+    gi_H1_rank, gi_H1_torsion = parse_homology_rank(gi_H1)
+
+    if verbose:
+      verbose_output(g, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+
+    if g_h1_rank_gt:
+      if g_H1_rank > gi_H1_rank:
+        # easy to find examples with n=3 or n=4, z=1
+        print()
+        print("graph H1 rank greater than insplit H1 rank!")
+        verbose_output(g, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+        save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='GH1_rank_gt_GIH1')
+
+
+    if any_torsion:
+      if g_H1_torsion > 0 or gi_H1_torsion > 0:
+        if g_H1 != gi_H1:
+          print()
+          print("nonzero torsion and different H1")
+          if verbose:
+            verbose_output(g, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+          save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='just_diff_h1')
+
+    if only_og_torsion:
+      if g_H1_torsion > 0 and gi_H1_torsion == 0:
+        print()
+        print("Diff; WOW torsion in g_H1 but not gi_H1!")
+        verbose_output(g, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
         save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='torsion-in-og-not-insplit')
         exit()
 
 
+def gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric, verbose, R=None, B=None, only_og_torsion=True):
+  print("n=", n, "z=", z)
+  for run in range(runs):
+    if run%50 == 0:
+      print('run', run)
 
-def premade_graphs(self, og, ig):
+    g = RandomlyGeneratedTwoGraphForInsplitting(n,z, symmetric=symmetric)
+
+    if not g.is_legit:
+      print_legit(g)
+      continue
+
+    gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
+    calc_homologies(g, gi, verbose)
+
+
+def premade_graphs(og, ig):
   g = TwoGraph(og)
   gi = TwoGraph(ig)
+
+def parse_matrix(M):
+  if M is None:
+    return None
+  matrix = ast.literal_eval(M)
+  assert type(matrix) is list
+  return matrix
+
+def print_legit(g):
+  try:
+    if g.v is None:
+      print("G has no insplit vertex")
+      return
+  except:
+    print("G has no v")
+  try:
+    if len(g.commuting_squares)==0:
+      print("G has no commuting squares")
+      return
+  except:
+    print("G has no commuting squares")
 
 
 if __name__ == "__main__":
@@ -126,6 +226,17 @@ if __name__ == "__main__":
   random_parser.add_argument("z",       type=int,                  help='Entries in adj. matrices will be in [0,z]')
   random_parser.add_argument("runs",  type=int, default=1, help=runs_help)
   random_parser.add_argument("-s", "--symmetric", dest='symmetric',  required=False, default=False, action='store_true', help=s_help)
+  random_parser.add_argument("-v", "--verbose", dest='verbose',  required=False, default=False, action='store_true', help='be verbose')
+
+  # What to look for
+  random_parser.add_argument("--only-og-torsion", dest='only_og_torsion',  required=False, default=True, action='store_true', help='be verbose')
+  random_parser.add_argument("--any-torsion-any-diff-homologies", dest='any_torsion_any_diff_homologies',  required=False, default=False, action='store_true', help='be verbose')
+  random_parser.add_argument("--g_h1_rank_gt", dest='g_h1_rank_gt',  required=False, default=False, action='store_true', help='be verbose')
+
+  matrices_parser = subparsers.add_parser('matrices', help='Parser for matricesly generated graphs')
+  matrices_parser.add_argument("-R",  dest='R',  required=False, default=None, help='Red adjacency matrix')
+  matrices_parser.add_argument("-B",  dest='B',  required=False, default=None, help='Blue adjacency matrix')
+  matrices_parser.add_argument("-v", "--verbose", dest='verbose',  required=False, default=False, action='store_true', help='be verbose')
 
   args = parser.parse_args()
   if args.command == 'random':
@@ -133,8 +244,40 @@ if __name__ == "__main__":
     z = args.z
     runs = args.runs
     symmetric = args.symmetric
-    gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric)
+    verbose = args.verbose
+    only_og_torsion = args.only_og_torsion
+    any_torsion = args.any_torsion_any_diff_homologies
+    g_h1_rank_gt = args.g_h1_rank_gt
+    gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric, verbose, only_og_torsion, any_torsion, g_h1_rank_gt)
 
   elif args.command == 'files':
     og_file,insplit_file = args.files
     premade_graphs(og_file, insplit_file)
+
+  elif args.command == 'matrices':
+    print("arg.R is", args.R)
+    verbose = args.verbose
+    R = parse_matrix(args.R)
+    B = parse_matrix(args.B)
+    assert (R is None and B is None) or (type(R) is list and type(B) is list)
+
+    n = len(R)
+    assert len(R) == len(B)
+    for i in range(len(R)):
+      assert len(R[i]) == len(B[i])
+      assert len(R[i]) == n
+
+    z = 0
+    for mat in (R,B):
+      for row in mat:
+        rm = max(row)
+        z = max(rm,z)
+    assert z > 0
+
+    g = RandomlyGeneratedTwoGraphForInsplitting(n,z,R=R,B=B)
+    if not g.is_legit:
+      print_legit(g)
+      exit()
+
+    gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
+    calc_homologies(g, gi, verbose)

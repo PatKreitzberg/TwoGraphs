@@ -25,16 +25,6 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     self.B = B
     assert self.n == len(R)
 
-    if False:
-      print("Red matrix")
-      for r in R:
-        print(r)
-      print()
-      print("Blue matrix")
-      for r in B:
-        print(r)
-      print()
-
     assert R is not None
     assert B is not None
 
@@ -50,6 +40,10 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     if type(self) is RandomlyGeneratedTwoGraph:
       self.commuting_squares = self.get_commuting_squares()
       assert self.commuting_squares is not None
+      if len(commuting_squares)==0:
+        self.is_legit = False
+        return
+
 
       n_commuting_squares = len(self.commuting_squares)
       n_rb_paths = sum([sum([len(col) for col in row]) for row in self.BR_paths_matrix])
@@ -71,6 +65,12 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     always true; for the scond matrix it is harder to guarantee because it must be tailored to commute with
     the first matrix
     '''
+
+    if symmetric:
+      R = np.random.randint(self.z + 1, size=(self.n, self.n))
+      return R, R
+
+
     if attempt > 5:
       return None,None
 

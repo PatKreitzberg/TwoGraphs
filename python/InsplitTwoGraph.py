@@ -25,6 +25,7 @@ class InsplitTwoGraph(TwoGraph):
     assert len(self.E2) > 0
 
     self.vertices, self.edges, self.commuting_squares = self.insplit(g,v)
+    assert self.commuting_squares is not None
     self.n = len(self.vertices)
     self.calculate_boundary_matrices()
 

@@ -28,12 +28,7 @@ class RandomlyGeneratedTwoGraphForInsplitting(RandomlyGeneratedTwoGraph):
 
     self.time_limit_seconds = datetime.timedelta(seconds=10)
     # Find vertex which can be partitioned at
-    # v,E1,E2 = self.find_insplit_vertex()
-
     v,E1,E2 = self.find_insplit_vertex_opt()
-    # print("E1", [str(e) for e in E1])
-    # print("E2", [str(e) for e in E2])
-    # print(f"v is {v}")
 
     self.is_legit = True
     if v is None:
@@ -59,6 +54,9 @@ class RandomlyGeneratedTwoGraphForInsplitting(RandomlyGeneratedTwoGraph):
       self.vertices = [i for i in range(n)]
       self.edges = {edge for edge in self.R_path_matrix.edges + self.B_path_matrix.edges}
       self.commuting_squares = commuting_squares
+      if len(commuting_squares) == 0:
+        self.is_legit = False
+        return
 
       self.calculate_boundary_matrices()
 
@@ -351,23 +349,6 @@ class RandomlyGeneratedTwoGraphForInsplitting(RandomlyGeneratedTwoGraph):
       if len(E1)>0 and len(E2)>0:
         return v, E1, E2
     return None,{},{}
-
-
-  def find_insplit_vertex(self):
-    # Determine the number of available CPU cores
-    num_cores = multiprocessing.cpu_count()
-
-    # Use a partial to pass 'self' into the worker
-    worker = partial(_worker_wrapper, obj=self)
-
-    with multiprocessing.Pool(processes=num_cores) as pool:
-      # imap_unordered is faster and allows us to stop early
-      for result in pool.imap_unordered(worker, range(self.n)):
-        if result is not None:
-          # Terminate the pool immediately once we find a match
-          pool.terminate()
-          return result
-    return None, {}, {}
 
   def matching_partition_claude(self, v):
     '''Get source profile vectors then find a proper partition of
