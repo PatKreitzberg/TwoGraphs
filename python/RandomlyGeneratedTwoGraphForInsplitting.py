@@ -45,6 +45,7 @@ class RandomlyGeneratedTwoGraphForInsplitting(RandomlyGeneratedTwoGraph):
       assert commuting_squares is not None
 
       n_commuting_squares = len(commuting_squares)
+
       n_rb_paths = sum([sum([len(col) for col in row]) for row in self.BR_paths_matrix])
       assert n_commuting_squares == n_rb_paths
 

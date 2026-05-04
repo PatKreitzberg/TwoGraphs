@@ -10,6 +10,17 @@ from python.InsplitTwoGraph import InsplitTwoGraph
 from python.RandomlyGeneratedTwoGraph import RandomlyGeneratedTwoGraph
 from python.TwoGraph import TwoGraph
 
+
+def inspect_homology(g):
+  d1 = matrix(ZZ, g.d_1.matrix)
+  d2 = matrix(ZZ, g.d_2.matrix)
+  C = ChainComplex({1: d1, 2: d2}, degree=-1)
+
+  reprs = C.homology(1, generators=True)
+  print("Repres", reprs)
+
+
+
 def cohomology(g):
   d1 = matrix(ZZ, g.d_1.matrix)
   d2 = matrix(ZZ, g.d_2.matrix)
@@ -45,19 +56,19 @@ def save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend=''):
     og_name = og_name.replace(" ", "_")
     ig_name = ig_name.replace(" ", "_")
 
-    if (g_H1 !=  gi_H1) and (g_H2 !=  gi_H2):
-        print(f"Diff homologies! Saving to \n{og_name} \nand\n{ig_name}")
-        g.save_to_file(og_name)
-        gi.save_to_file(ig_name)
 
-        # Append notes
-        with open(og_name,'a') as f:
-          f.write('#notes\n')
-          f.write(' GH1:' +str(g_H1) + "\n")
-          f.write(' GH2:' +str(g_H2) + "\n")
-          f.write(' GIH1:' +str(gi_H1) + "\n")
-          f.write(' GIH2:' +str(gi_H2) + "\n")
-          f.close()
+    print(f"Saving to \n{og_name} \nand\n{ig_name}")
+    g.save_to_file(og_name)
+    gi.save_to_file(ig_name)
+
+    # Append notes
+    with open(og_name,'a') as f:
+      f.write('#notes\n')
+      f.write(' GH1:' +str(g_H1) + "\n")
+      f.write(' GH2:' +str(g_H2) + "\n")
+      f.write(' GIH1:' +str(gi_H1) + "\n")
+      f.write(' GIH2:' +str(gi_H2) + "\n")
+      f.close()
 
 def print_homology(H0,H1,H2, i_H0, i_H1, i_H2,is_cohomology):
   if is_cohomology:
@@ -76,9 +87,10 @@ def print_adj_matrices(R,B):
     print(r)
   print()
 
-def verbose_output(g, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2):
+def verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2):
   print()
   print("Verbose output")
+  print("Insplit at", gi.v)
 
   # Print homology
   print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
@@ -139,32 +151,50 @@ def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h
     gi_H1_rank, gi_H1_torsion = parse_homology_rank(gi_H1)
 
     if verbose:
-      verbose_output(g, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+      verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
 
-    if g_h1_rank_gt:
-      if g_H1_rank > gi_H1_rank:
-        # easy to find examples with n=3 or n=4, z=1
-        print()
-        print("graph H1 rank greater than insplit H1 rank!")
-        verbose_output(g, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
-        save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='GH1_rank_gt_GIH1')
-
-
-    if any_torsion:
-      if g_H1_torsion > 0 or gi_H1_torsion > 0:
-        if g_H1 != gi_H1:
-          print()
-          print("nonzero torsion and different H1")
-          if verbose:
-            verbose_output(g, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
-          save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='just_diff_h1')
+    # if any H1 has torsion!
+    # if g_H1_torsion > 0 or gi_H1_torsion > 0:
+    #   verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+    #   n_zeros = 0
+    #   for row in g.R:
+    #     for v in row:
+    #       if v==0:
+    #         n_zeros +=1
+    #   if n_zeros > 1:
+    #     save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='small_with_torsion')
+    #     print_adj_matrices(g.R,g.B)
+    #     print("Exiting because example of small with torsion")
+    #
+    # if g_h1_rank_gt:
+    #   print("rank diff")
+    #   if g_H1_rank > gi_H1_rank:
+    #     # easy to find examples with n=3 or n=4, z=1
+    #     print()
+    #     print("graph H1 rank greater than insplit H1 rank!")
+    #     verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+    #     save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='GH1_rank_gt_GIH1')
+    #     print("Exiting because g_H1_rank > gi_H1_rank")
+    #     exit()
+    #
+    #
+    # if any_torsion:
+    #   print("in any torsion")
+    #   if g_H1_torsion > 0 or gi_H1_torsion > 0:
+    #     if g_H1 != gi_H1:
+    #       print()
+    #       print("nonzero torsion and different H1")
+    #       if verbose:
+    #         verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+    #       save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='just_diff_h1')
 
     if only_og_torsion:
       if g_H1_torsion > 0 and gi_H1_torsion == 0:
         print()
         print("Diff; WOW torsion in g_H1 but not gi_H1!")
-        verbose_output(g, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
-        save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='torsion-in-og-not-insplit')
+        verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+        save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='wow-torsion-in-og-not-insplit')
+        print("exiting because WOW torsion in g_H1 but not gi_H1!")
         exit()
 
 
@@ -237,6 +267,8 @@ if __name__ == "__main__":
   matrices_parser.add_argument("-R",  dest='R',  required=False, default=None, help='Red adjacency matrix')
   matrices_parser.add_argument("-B",  dest='B',  required=False, default=None, help='Blue adjacency matrix')
   matrices_parser.add_argument("-v", "--verbose", dest='verbose',  required=False, default=False, action='store_true', help='be verbose')
+  matrices_parser.add_argument("-vtx", "--vertex", dest='v',  required=False, type=int, help='be verbose')
+
 
   args = parser.parse_args()
   if args.command == 'random':
@@ -256,6 +288,7 @@ if __name__ == "__main__":
 
   elif args.command == 'matrices':
     print("arg.R is", args.R)
+    print("arg.B is", args.B)
     verbose = args.verbose
     R = parse_matrix(args.R)
     B = parse_matrix(args.B)
@@ -280,4 +313,8 @@ if __name__ == "__main__":
       exit()
 
     gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
-    calc_homologies(g, gi, verbose)
+
+    inspect_homology(g)
+    calc_homologies(g, gi, True)
+    print("returning early")
+    exit()

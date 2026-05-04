@@ -95,6 +95,12 @@ class TwoGraph:
     self.edge_to_index  = {e:i for i,e in enumerate(self.edges)}
     self.commuting_square_to_index = {cs:i for i,cs in enumerate(self.commuting_squares)}
 
+    # To get info from Sage
+    self.index_to_vertex = {i:v for v,i in self.vertex_to_index.items()}
+    self.index_to_edge = {i:e for e,i in self.edge_to_index.items()}
+    self.index_to_commuting_square = {i:cs for cs,i in self.commuting_square_to_index.items()}
+
+
     # BOUNDARY FUNCTION MATRICES
     self.d_1 = BoundaryFunctionMatrix(
       self,
