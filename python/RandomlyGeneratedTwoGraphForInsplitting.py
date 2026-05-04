@@ -1,4 +1,3 @@
-from RandomlyGeneratedTwoGraph import RandomlyGeneratedTwoGraph
 import numpy as np
 import itertools
 import collections
@@ -6,8 +5,10 @@ from collections import defaultdict as dd
 import multiprocessing
 from functools import partial
 import time,datetime
-from CommutingSquare import CommutingSquare
-from Edge import Edge
+
+from python.CommutingSquare import CommutingSquare
+from python.Edge import Edge
+from python.RandomlyGeneratedTwoGraph import RandomlyGeneratedTwoGraph
 
 def _worker_wrapper(v, obj):
   """

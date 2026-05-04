@@ -1,7 +1,8 @@
-from TwoGraph import TwoGraph
-from Edge import Edge
-from CommutingSquare import CommutingSquare
 import copy
+
+from python.TwoGraph import TwoGraph
+from python.Edge import Edge
+from python.CommutingSquare import CommutingSquare
 
 class InsplitTwoGraph(TwoGraph):
   def __init__(self, g_, v, E1, E2):

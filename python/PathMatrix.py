@@ -1,4 +1,4 @@
-from Edge import Edge
+from python.Edge import Edge
 
 class PathMatrix:
   def __init__(self, A, degree):

@@ -9,9 +9,9 @@ import numpy as np
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyArrowPatch
 
-from Edge import Edge
-from CommutingSquare import CommutingSquare
-from BoundaryFunctionMatrix import BoundaryFunctionMatrix
+from python.Edge import Edge
+from python.CommutingSquare import CommutingSquare
+from python.BoundaryFunctionMatrix import BoundaryFunctionMatrix
 
 class TwoGraph:
   def __init__(self, load_from=None):

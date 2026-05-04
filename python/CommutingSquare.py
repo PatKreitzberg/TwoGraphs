@@ -1,4 +1,4 @@
-from Edge import Edge
+from python.Edge import Edge
 
 class CommutingSquare:
   def __init__(self, r1, s1, r2, s2):

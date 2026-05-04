@@ -2,8 +2,9 @@ from sympy import Matrix,pprint
 from sympy.matrices.normalforms import smith_normal_form, hermite_normal_form
 from fractions import Fraction
 import math
-from CommutingSquare import CommutingSquare
 from sage.all import matrix,ZZ
+
+from python.CommutingSquare import CommutingSquare
 
 class BoundaryFunctionMatrix:
   def __init__(self,

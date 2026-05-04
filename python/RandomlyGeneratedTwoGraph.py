@@ -3,10 +3,9 @@ from collections import defaultdict as dd
 import multiprocessing
 from functools import partial
 
-from find_first_equal_subset import find_first_equal_subset
-from TwoGraph import TwoGraph
-from PathMatrix import PathMatrix
-from CommutingSquare import CommutingSquare
+from python.TwoGraph import TwoGraph
+from python.PathMatrix import PathMatrix
+from python.CommutingSquare import CommutingSquare
 
 class RandomlyGeneratedTwoGraph(TwoGraph):
   def __init__(self, n, z, R=None, B=None, symmetric=False):
