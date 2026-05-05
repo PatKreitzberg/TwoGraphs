@@ -1,8 +1,6 @@
 import re, math
 from collections import defaultdict as dd
 from fractions import Fraction
-from sympy import Matrix
-from sympy.matrices.normalforms import hermite_normal_form
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np

@@ -13,9 +13,88 @@ from python.InsplitTwoGraph import InsplitTwoGraph
 from python.RandomlyGeneratedTwoGraph import RandomlyGeneratedTwoGraph
 from python.TwoGraph import TwoGraph
 
-def foo():
-  print('foo one')
-  print('foo two')
+import math
+
+def tikzpicture(gfile):
+    degree_to_color = {1: "red, dashed", 2: "blue"}
+    nl = '\n'
+
+    g = TwoGraph(gfile)
+    out = nl + r'\begin{tikzpicture}[' + nl
+    out += r'  vertex/.style = {circle, draw, minimum size=0.8cm},' + nl
+    out += r'  every loop/.style = {stealth-},' + nl
+    out += r'  thick, ->, >=stealth' + nl
+    out += r']' + nl + nl
+
+    # 1. Position nodes in a circle to avoid (0,0) overlap
+    radius = 3  # Adjust size of the graph layout
+    num_vertices = len(g.vertices)
+    for i, v in enumerate(g.vertices):
+        angle = i * (360 / num_vertices)
+        out += fr'\node[vertex] (v{v}) at ({angle}:{radius}) {{$ {v} $}};' + nl
+
+    out += nl
+
+    # 2. Track edge counts to prevent overlapping paths
+    # Key: tuple of sorted vertex IDs for edges, or single ID for loops
+    edge_counts = {}
+
+    for e in g.edges:
+        # Create a unique key for the pair (or loop)
+        pair = tuple(sorted((e.s, e.r)))
+        edge_counts[pair] = edge_counts.get(pair, 0) + 1
+        count = edge_counts[pair]
+
+        out += fr'\path[{degree_to_color[e.degree]}] (v{e.s}) edge ['
+
+        if e.r == e.s:
+            # Shift loop angle for each subsequent loop on the same node
+            # Start at 0 degrees and move by 45 degrees each time
+            angle = (count - 1) * 45
+            out += fr'loop, out={angle+30}, in={angle-30}, looseness=8'
+        else:
+            # Vary the bend: 15, -15, 45, -45, etc.
+            # Flips side and increases intensity to "stack" multiple edges
+            bend = 20 * ((count + 1) // 2) * (1 if count % 2 == 1 else -1)
+            out += fr'bend left={bend}'
+
+        out += fr'] node[black, font=\small, auto] {{{e.label}}} (v{e.r});' + nl
+
+    out += r'\end{tikzpicture}'
+    print(out)
+
+
+
+
+def oldtikzpicture(gfile):
+  degree_to_color = {1:"red, dashed", 2:"blue"}
+  nl = '\n'
+
+  g = TwoGraph(gfile)
+  out = '\n'
+  out += r'\begin{tikzpicture}[' + nl
+  out +=  r'vertex/.style = {circle, draw, minimum size=0.8cm},' + nl
+  out +=  r'every loop/.style = {stealth-}, % Adds arrows to the loops' + nl
+  out +=  r'thick,' + nl
+  out +=  r'->, >=stealth, % Arrow style' + nl
+  out +=  r'node distance=4cm' + nl
+  out +=  r'],' + nl
+
+  for v in g.vertices:
+    out += r'\node[vertex] (v' + str(v) + r') at (0,0) {$' + str(v)  + '$};'
+    out += nl + nl
+
+  for e in g.edges:
+    out += r'\path[' + degree_to_color[e.degree] + r'] (v' + str(e.s) + ') edge ['
+    if e.r == e.s:
+      out += 'loop right]'
+    else:
+      out += 'bend left=15]'
+    out += ' node[black, below] {' + str(e.label) + '} (v' + str(e.r) + ');'
+    out += nl + nl
+  out += r'\end{tikzpicture}'
+  print(out)
+
 
 def print_vec(index_to_item, elt, chain, i):
   s = ''
@@ -326,7 +405,6 @@ def premade_graphs(og, ig):
   inspect_homology(gi)
 
 
-
 def parse_matrix(M):
   if M is None:
     return None
@@ -355,6 +433,10 @@ def print_legit(g):
 if __name__ == "__main__":
   parser = ArgumentParser()
   subparsers = parser.add_subparsers(dest="command", required=True)
+
+  # Single graph, want to get tikz of graph
+  tikz_parser = subparsers.add_parser('tikz', help='Parser for randomly generated graphs')
+  tikz_parser.add_argument(dest='gfile', help="Generate random graphs")
 
   # parse for when given files
   file_parser = subparsers.add_parser('files', help='Parser for randomly generated graphs')
@@ -393,6 +475,10 @@ if __name__ == "__main__":
     any_torsion = args.any_torsion_any_diff_homologies
     g_h1_rank_gt = args.g_h1_rank_gt
     gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric, verbose, R=None, B=None, only_og_torsion=only_og_torsion)
+
+  elif args.command == 'tikz':
+    gfile = args.gfile
+    tikzpicture(gfile)
 
   elif args.command == 'files':
     og_file,insplit_file = args.files
