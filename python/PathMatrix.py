@@ -72,18 +72,50 @@ class PathMatrix:
     return res
 
 
+  def get_path_matrix_small_n(self, A, degree):
+    self.edge_labels_superset = set()
+    if degree == 1: # red edges
+      self.edge_labels_superset = [s for s in 'abcdefghij']
+    elif degree == 2:
+      self.edge_labels_superset = [s for s in 'mnpqrstwxyz']
+    else:
+      assert False
+
+    # Reverse so a is poped first then b...
+    self.edge_labels_superset = self.edge_labels_superset[::-1]
+    path_matrix =  [
+      [
+        [
+          self.create_edge_small_n(row, col, self.degree, edge_key) for edge_key in range(A[row][col])
+        ]
+        for col in range(self.n)
+      ]
+      for row in range(self.n)
+    ]
+    return path_matrix
+
+  def create_edge_small_n(self, source_vertex, range_vertex, degree, edge_key):
+    edge_label = self.edge_labels_superset.pop()
+    return Edge(edge_label, source_vertex, range_vertex, degree=degree)
+
+
   def get_path_matrix(self, A, degree):
     '''
     A: Adjacency matrix for DIRECTED GRAPH
     Returns a matrix from A where each entry is (degree, (i,j), A_ij)
     This allows us to get the path
-
     Edges will be Edge items with
     label = "E(row,col)edge_key"
     s = row
     r = col
     degree = degree
     '''
+
+    total_edges = 0
+    for row in A:
+      total_edges += sum(row)
+    if total_edges <= 10:
+      return self.get_path_matrix_small_n(A, degree)
 
     # Edge of the form
     path_matrix =  [

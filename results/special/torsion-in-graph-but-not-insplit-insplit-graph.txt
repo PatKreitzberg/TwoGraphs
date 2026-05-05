@@ -1,0 +1,35 @@
+# edges of the form <edge label> <source vertex> <range vertex>
+a 2 1^2
+t^2 1^2 1^1
+s 2 2
+e^1 1^1 1^1
+c^2 1^2 1^2
+z^2 1^2 1^2
+b 2 2
+e^2 1^2 1^1
+x 2 2
+y 2 1^2
+c^1 1^1 1^2
+z^1 1^1 1^2
+d 2 2
+t^1 1^1 1^1
+# degrees  of the form <degree> <edge> <edge>...
+1 a e^1 c^2 b e^2 c^1 d 
+2 t^2 s z^2 x y z^1 t^1 
+# commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>
+x b ~ d s
+x d ~ d x
+z^1 e^2 ~ c^2 z^2
+t^2 c^1 ~ e^1 t^1
+z^2 c^1 ~ c^1 t^1
+t^2 a ~ e^2 y
+z^2 c^2 ~ c^1 t^2
+z^2 a ~ a x
+t^1 e^1 ~ e^2 z^1
+s b ~ b s
+t^2 c^2 ~ e^1 t^2
+z^1 e^1 ~ c^2 z^1
+y b ~ c^2 y
+t^1 e^2 ~ e^2 z^2
+s d ~ b x
+y d ~ a s

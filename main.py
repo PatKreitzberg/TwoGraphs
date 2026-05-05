@@ -3,22 +3,112 @@ import random
 import numpy as np
 from argparse import ArgumentParser
 
-from sage.all import matrix, ZZ, ChainComplex
+from sage.homology.chain_complex import ChainComplex
+from sage.matrix.constructor import matrix
+from sage.rings.integer_ring import ZZ
+
 
 from python.RandomlyGeneratedTwoGraphForInsplitting import RandomlyGeneratedTwoGraphForInsplitting
 from python.InsplitTwoGraph import InsplitTwoGraph
 from python.RandomlyGeneratedTwoGraph import RandomlyGeneratedTwoGraph
 from python.TwoGraph import TwoGraph
 
+def foo():
+  print('foo one')
+  print('foo two')
+
+def print_vec(index_to_item, elt, chain, i):
+  s = ''
+  for ind,val in enumerate(chain._vec[i]):
+    if val != 0:
+      edge = index_to_item[ind]
+      if val >0 and len(s) > 0:
+        s+=' + '
+      if val == 1:
+        s += str(edge)
+      elif  val == -1:
+        s += ' - ' + str(edge)
+      else:
+        s += str(val) + str(edge)
+  print(f'{elt}: ' + s)
+
+
+def print_vecs(index_to_item, i, C):
+  reprs = C.homology(i, generators=True)
+  print("Reprs", reprs)
+  for elt, chain in reprs:
+    s = ''
+    for ind,val in enumerate(chain._vec[i]):
+      if val != 0:
+        edge = index_to_item[ind]
+        if val >0 and len(s) > 0:
+          s+=' + '
+        if val == 1:
+          s += str(edge)
+        elif  val == -1:
+          s += ' - ' + str(edge)
+        else:
+          s += str(val) + str(edge)
+    print(f'{elt}: ' + s)
+
+
+def print_homology_structures(d1, d2, vertex_to_index, edge_to_index, commuting_square_to_index):
+    # Invert the dictionaries for name lookups
+    idx_to_v = {i: v for v, i in vertex_to_index.items()}
+    idx_to_e = {i: e for e, i in edge_to_index.items()}
+    idx_to_s = {i: s for s, i in commuting_square_to_index.items()}
+
+    def pretty_print_vector(v, lookup):
+        """Converts vector indices to object names."""
+        parts = []
+        for i, val in enumerate(v):
+            if val == 0: continue
+            label = lookup.get(i, f"idx_{i}")
+            prefix = f"{val}*" if val != 1 else ""
+            if val == -1: prefix = "-"
+            parts.append(f"{prefix}[{label}]")
+        return " + ".join(parts).replace("+ -", "- ")
+
+    # 1. Kernel of d1: The 1-Cycles (Z1)
+    # These are combinations of edges that form closed loops.
+    print("=== 1-CYCLES: Ker(d1) ===")
+    z1 = d1.right_kernel()
+    if z1.rank() == 0:
+        print("None (No cycles found)")
+    else:
+        for i, basis_vec in enumerate(z1.basis()):
+            print(f"Cycle {i}: {pretty_print_vector(basis_vec, idx_to_e)}")
+
+    print("\n" + "="*30 + "\n")
+
+    # 2. Image of d2: The 1-Boundaries (B1)
+    # These are edge cycles that are "filled in" by commuting squares.
+    print("=== 1-BOUNDARIES: Im(d2) ===")
+    # Using column_space() because each column of d2 represents the
+    # boundary of a commuting square in the edge space.
+    b1 = d2.column_space()
+    if b1.rank() == 0:
+        print("None (No boundaries found)")
+    else:
+        for i, basis_vec in enumerate(b1.basis()):
+            print(f"Boundary {i}: {pretty_print_vector(basis_vec, idx_to_e)}")
+
+    print("\n" + "="*30 + "\n")
+
+    # 3. Relationship (Torsion Check)
+    # If a cycle exists in Ker(d1) but its multiple exists in Im(d2),
+    # that is where your C2 comes from.
+    print("=== TORSION IDENTIFICATION ===")
+    print(f"Rank of Ker(d1) [Cycles]: {z1.rank()}")
+    print(f"Rank of Im(d2)  [Boundaries]: {b1.rank()}")
+    print(f"H1 Rank (Betti Number): {z1.rank() - b1.rank()}")
+
 
 def inspect_homology(g):
   d1 = matrix(ZZ, g.d_1.matrix)
   d2 = matrix(ZZ, g.d_2.matrix)
   C = ChainComplex({1: d1, 2: d2}, degree=-1)
-
-  reprs = C.homology(1, generators=True)
-  print("Repres", reprs)
-
+  print_homology_structures(d1, d2, g.vertex_to_index, g.edge_to_index, g.commuting_square_to_index)
 
 
 def cohomology(g):
@@ -33,7 +123,7 @@ def cohomology(g):
 def homology(g):
   d1 = matrix(ZZ, g.d_1.matrix)
   d2 = matrix(ZZ, g.d_2.matrix)
-  C = ChainComplex({1: d1, 2: d2}, degree=-1)
+  C = ChainComplex({1: d1, 2: d2}, degree=-1, base_ring=ZZ)
   H0 = C.homology(0)
   H1 = C.homology(1)
   H2 = C.homology(2)
@@ -90,7 +180,10 @@ def print_adj_matrices(R,B):
 def verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2):
   print()
   print("Verbose output")
-  print("Insplit at", gi.v)
+  try:
+    print("Insplit at", gi.v)
+  except:
+    pass
 
   # Print homology
   print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
@@ -153,7 +246,7 @@ def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h
     if verbose:
       verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
 
-    # if any H1 has torsion!
+    ## if any H1 has torsion!
     # if g_H1_torsion > 0 or gi_H1_torsion > 0:
     #   verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
     #   n_zeros = 0
@@ -176,8 +269,8 @@ def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h
     #     save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='GH1_rank_gt_GIH1')
     #     print("Exiting because g_H1_rank > gi_H1_rank")
     #     exit()
-    #
-    #
+
+
     # if any_torsion:
     #   print("in any torsion")
     #   if g_H1_torsion > 0 or gi_H1_torsion > 0:
@@ -192,10 +285,11 @@ def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h
       if g_H1_torsion > 0 and gi_H1_torsion == 0:
         print()
         print("Diff; WOW torsion in g_H1 but not gi_H1!")
+        print(f"g.E1={[str(e) for e in g.E1]} and g.E2={[str(e) for e in g.E2]}")
         verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
         save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='wow-torsion-in-og-not-insplit')
         print("exiting because WOW torsion in g_H1 but not gi_H1!")
-        exit()
+        return
 
 
 def gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric, verbose, R=None, B=None, only_og_torsion=True):
@@ -217,6 +311,21 @@ def gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetri
 def premade_graphs(og, ig):
   g = TwoGraph(og)
   gi = TwoGraph(ig)
+  g_H0,  g_H1,  g_H2 = homology(g)
+  gi_H0, gi_H1, gi_H2 = homology(gi)
+  g_C0,  g_C1,  g_C2 = cohomology(g)
+  gi_C0, gi_C1, gi_C2 = cohomology(gi)
+
+  print('~~~~~~ Homology of G and Insplit G ~~~~~~')
+  # Print homology
+  print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
+  # Print cohomology
+  print_homology(g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2, True)
+  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  inspect_homology(g)
+  inspect_homology(gi)
+
+
 
 def parse_matrix(M):
   if M is None:
@@ -238,6 +347,9 @@ def print_legit(g):
       return
   except:
     print("G has no commuting squares")
+
+
+
 
 
 if __name__ == "__main__":
@@ -280,7 +392,7 @@ if __name__ == "__main__":
     only_og_torsion = args.only_og_torsion
     any_torsion = args.any_torsion_any_diff_homologies
     g_h1_rank_gt = args.g_h1_rank_gt
-    gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric, verbose, only_og_torsion, any_torsion, g_h1_rank_gt)
+    gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric, verbose, R=None, B=None, only_og_torsion=only_og_torsion)
 
   elif args.command == 'files':
     og_file,insplit_file = args.files
@@ -300,6 +412,10 @@ if __name__ == "__main__":
       assert len(R[i]) == len(B[i])
       assert len(R[i]) == n
 
+    Rmat = matrix(R)
+    Bmat = matrix(B)
+    assert Rmat*Bmat == Bmat*Rmat
+
     z = 0
     for mat in (R,B):
       for row in mat:
@@ -307,6 +423,7 @@ if __name__ == "__main__":
         z = max(rm,z)
     assert z > 0
 
+    print(f"Creating graph with R={R} and B={B}")
     g = RandomlyGeneratedTwoGraphForInsplitting(n,z,R=R,B=B)
     if not g.is_legit:
       print_legit(g)

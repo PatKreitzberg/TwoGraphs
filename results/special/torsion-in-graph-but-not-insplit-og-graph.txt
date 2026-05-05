@@ -1,0 +1,70 @@
+# edges of the form <edge label> <source vertex> <range vertex>
+a 2 1
+s 2 2
+t 1 1
+b 2 2
+x 2 2
+y 2 1
+z 1 1
+c 1 1
+d 2 2
+e 1 1
+# degrees  of the form <degree> <edge> <edge>...
+1 a b c d e 
+2 s t x y z 
+# commuting squares of the form <edge label> <edge label> ~  <edge label> <edge label>
+s b ~ b s
+x b ~ d s
+s d ~ b x
+x d ~ d x
+t c ~ e t
+t e ~ e z
+z c ~ c t
+z e ~ c z
+t a ~ e y
+y d ~ a s
+z a ~ a x
+y b ~ c y
+#notes
+ GH1:Z x Z x C2
+ GH2:Z^5
+ GIH1:Z x Z x Z
+ GIH2:Z^7
+
+g.E1=['e', 't'] and g.E2=['z', 'a', 'y', 'c']
+
+Verbose output
+Insplit at 1
+Homology Graph	Insplit: 
+H^0 Z x Z		Z x Z 
+H^1 Z x Z x C2		Z x Z x Z 
+H^2 Z^5		Z^7
+
+Cohomology Graph	Insplit: 
+H_0 Z x Z		Z x Z 
+H_1 Z x Z		Z x Z x Z 
+H_2 Z^5 x C2		Z^7
+
+Red matrix
+[0 0 0]
+[0 2 0]
+[0 1 2]
+
+Blue matrix
+[0 0 0]
+[0 2 0]
+[0 1 2]
+
+E(deg=1,(2,1)#=0 -> a
+E(deg=1,(2,2)#=0 -> b
+E(deg=1,(1,1)#=1 -> c
+E(deg=1,(2,2)#=1 -> d
+E(deg=1,(1,1)#=0 -> e
+E(deg=2,(2,2)#=0 -> s
+E(deg=2,(1,1)#=0 -> t
+E(deg=2,(2,2)#=1 -> x
+E(deg=2,(2,1)#=0 -> y
+E(deg=2,(1,1)#=1 -> z
+
+
+

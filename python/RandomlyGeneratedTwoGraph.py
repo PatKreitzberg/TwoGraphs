@@ -10,6 +10,7 @@ from python.CommutingSquare import CommutingSquare
 class RandomlyGeneratedTwoGraph(TwoGraph):
   def __init__(self, n, z, R=None, B=None, symmetric=False):
     super().__init__()
+
     # n is number of vertices
     # z is an upper limit on number of edges in graph between any two (maybe non-distinct) vertices
     self.n = n
@@ -20,7 +21,6 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
       R,B = self.generate_adjacency_matrices(symmetric)
       assert (R*B).all() == (B*R).all()
 
-    R = B
     self.R = R
     self.B = B
     assert self.n == len(R)
@@ -69,7 +69,6 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     if symmetric:
       R = np.random.randint(self.z + 1, size=(self.n, self.n))
       return R, R
-
 
     if attempt > 5:
       return None,None

@@ -2,7 +2,7 @@ from sympy import Matrix,pprint
 from sympy.matrices.normalforms import smith_normal_form, hermite_normal_form
 from fractions import Fraction
 import math
-from sage.all import matrix,ZZ
+from sage.matrix.constructor import matrix
 
 from python.CommutingSquare import CommutingSquare
 
