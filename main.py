@@ -3,9 +3,7 @@ import random
 import numpy as np
 from argparse import ArgumentParser
 
-from sage.homology.chain_complex import ChainComplex
-from sage.matrix.constructor import matrix
-from sage.rings.integer_ring import ZZ
+from sage.all import vector, matrix, ZZ, ChainComplex
 
 
 from python.RandomlyGeneratedTwoGraphForInsplitting import RandomlyGeneratedTwoGraphForInsplitting
@@ -15,19 +13,25 @@ from python.TwoGraph import TwoGraph
 
 import math
 
-def tikzpicture(gfile):
-    degree_to_color = {1: "red, dashed", 2: "blue"}
-    nl = '\n'
 
+def tikzpicture(gfile):
+    degree_to_color = {1: "red, dashed", 2: "blue       "}
+    nl = '\n'
     g = TwoGraph(gfile)
+    loop_angle_delta = 70
     out = nl + r'\begin{tikzpicture}[' + nl
     out += r'  vertex/.style = {circle, draw, minimum size=0.8cm},' + nl
-    out += r'  every loop/.style = {stealth-},' + nl
-    out += r'  thick, ->, >=stealth' + nl
+    out += r'  thick, ->, >=stealth,' + nl
+    out += r'  loop spread/.style={looseness=8, distance=2cm},' + nl
+
+    # We store the angles inside a TikZ "directory" called /angles/
+    for v in g.vertices:
+        out += fr'  /angles/v{v}/.initial=0,' + nl
+
     out += r']' + nl + nl
 
-    # 1. Position nodes in a circle to avoid (0,0) overlap
-    radius = 3  # Adjust size of the graph layout
+    # 1. Position nodes
+    radius = 3
     num_vertices = len(g.vertices)
     for i, v in enumerate(g.vertices):
         angle = i * (360 / num_vertices)
@@ -35,12 +39,9 @@ def tikzpicture(gfile):
 
     out += nl
 
-    # 2. Track edge counts to prevent overlapping paths
-    # Key: tuple of sorted vertex IDs for edges, or single ID for loops
+    # 2. Edges and Loops
     edge_counts = {}
-
     for e in g.edges:
-        # Create a unique key for the pair (or loop)
         pair = tuple(sorted((e.s, e.r)))
         edge_counts[pair] = edge_counts.get(pair, 0) + 1
         count = edge_counts[pair]
@@ -48,52 +49,18 @@ def tikzpicture(gfile):
         out += fr'\path[{degree_to_color[e.degree]}] (v{e.s}) edge ['
 
         if e.r == e.s:
-            # Shift loop angle for each subsequent loop on the same node
-            # Start at 0 degrees and move by 45 degrees each time
-            angle = (count - 1) * 45
-            out += fr'loop, out={angle+30}, in={angle-30}, looseness=8'
+            # PGF math needs \pgfkeysvalueof to read the variable
+            offset = (count - 1) * loop_angle_delta
+            out += (fr'out={{\pgfkeysvalueof{{/angles/v{e.s}}} + {offset + 30}}}, '
+                    fr'in={{\pgfkeysvalueof{{/angles/v{e.s}}} + {offset - 30}}}, loop')
         else:
-            # Vary the bend: 15, -15, 45, -45, etc.
-            # Flips side and increases intensity to "stack" multiple edges
             bend = 20 * ((count + 1) // 2) * (1 if count % 2 == 1 else -1)
             out += fr'bend left={bend}'
 
-        out += fr'] node[black, font=\small, auto] {{{e.label}}} (v{e.r});' + nl
+        out += fr'] node[black, auto] {{${e.label}$}} (v{e.r});' + nl
 
     out += r'\end{tikzpicture}'
     print(out)
-
-
-
-
-def oldtikzpicture(gfile):
-  degree_to_color = {1:"red, dashed", 2:"blue"}
-  nl = '\n'
-
-  g = TwoGraph(gfile)
-  out = '\n'
-  out += r'\begin{tikzpicture}[' + nl
-  out +=  r'vertex/.style = {circle, draw, minimum size=0.8cm},' + nl
-  out +=  r'every loop/.style = {stealth-}, % Adds arrows to the loops' + nl
-  out +=  r'thick,' + nl
-  out +=  r'->, >=stealth, % Arrow style' + nl
-  out +=  r'node distance=4cm' + nl
-  out +=  r'],' + nl
-
-  for v in g.vertices:
-    out += r'\node[vertex] (v' + str(v) + r') at (0,0) {$' + str(v)  + '$};'
-    out += nl + nl
-
-  for e in g.edges:
-    out += r'\path[' + degree_to_color[e.degree] + r'] (v' + str(e.s) + ') edge ['
-    if e.r == e.s:
-      out += 'loop right]'
-    else:
-      out += 'bend left=15]'
-    out += ' node[black, below] {' + str(e.label) + '} (v' + str(e.r) + ');'
-    out += nl + nl
-  out += r'\end{tikzpicture}'
-  print(out)
 
 
 def print_vec(index_to_item, elt, chain, i):
@@ -131,63 +98,117 @@ def print_vecs(index_to_item, i, C):
     print(f'{elt}: ' + s)
 
 
-def print_homology_structures(d1, d2, vertex_to_index, edge_to_index, commuting_square_to_index):
-    # Invert the dictionaries for name lookups
-    idx_to_v = {i: v for v, i in vertex_to_index.items()}
-    idx_to_e = {i: e for e, i in edge_to_index.items()}
-    idx_to_s = {i: s for s, i in commuting_square_to_index.items()}
 
-    def pretty_print_vector(v, lookup):
-        """Converts vector indices to object names."""
+
+
+def print_homology_and_solve_torsion(C, d1, d2, v_map, e_map, s_map):
+    """
+    Analyzes H1 homology, prints basis for cycles and boundaries,
+    and dynamically solves for the squares that bound torsion cycles.
+    """
+    from sage.modules.free_module_element import vector
+
+    # Invert maps
+    idx_to_v = {i: v for v, i in v_map.items()}
+    idx_to_e = {i: e for e, i in e_map.items()}
+    idx_to_s = {i: s for s, i in s_map.items()}
+
+    def pretty_print(v, lookup):
         parts = []
         for i, val in enumerate(v):
             if val == 0: continue
             label = lookup.get(i, f"idx_{i}")
-            prefix = f"{val}*" if val != 1 else ""
-            if val == -1: prefix = "-"
-            parts.append(f"{prefix}[{label}]")
+            symbol = f"{val}*" if abs(val) != 1 else ("-" if val == -1 else "")
+            parts.append(f"{symbol}[{label}]")
         return " + ".join(parts).replace("+ -", "- ")
 
-    # 1. Kernel of d1: The 1-Cycles (Z1)
-    # These are combinations of edges that form closed loops.
-    print("=== 1-CYCLES: Ker(d1) ===")
-    z1 = d1.right_kernel()
-    if z1.rank() == 0:
-        print("None (No cycles found)")
-    else:
-        for i, basis_vec in enumerate(z1.basis()):
-            print(f"Cycle {i}: {pretty_print_vector(basis_vec, idx_to_e)}")
+    # 1. 1-Cycles (Ker d1)
+    print("=== 1-CYCLES (Kernel of d1) ===")
+    for i, b in enumerate(d1.right_kernel().basis()):
+        print(f"Cycle {i}: {pretty_print(b, idx_to_e)}")
 
-    print("\n" + "="*30 + "\n")
+    print("\n=== 1-BOUNDARIES (Image of d2 by Square) ===")
+    for j, col in enumerate(d2.columns()):
+        if not col.is_zero():
+            print(f"Square [{idx_to_s[j]}] bounds: {pretty_print(col, idx_to_e)}")
 
-    # 2. Image of d2: The 1-Boundaries (B1)
-    # These are edge cycles that are "filled in" by commuting squares.
-    print("=== 1-BOUNDARIES: Im(d2) ===")
-    # Using column_space() because each column of d2 represents the
-    # boundary of a commuting square in the edge space.
-    b1 = d2.column_space()
-    if b1.rank() == 0:
-        print("None (No boundaries found)")
-    else:
-        for i, basis_vec in enumerate(b1.basis()):
-            print(f"Boundary {i}: {pretty_print_vector(basis_vec, idx_to_e)}")
+    # 3. Dynamic Torsion Analysis
+    print("\n=== DYNAMIC TORSION ANALYSIS ===")
+    # Get H1 homology with generators
+    h1 = C.homology(1, generators=True)
 
-    print("\n" + "="*30 + "\n")
+    for group, chain in h1:
+        # Check if the group is finite (torsion)
+        if group.is_finite():
+            order = group.order()
+            gen_vec = chain._vec[1]
+            print(f"\nFound Torsion Group: {group}")
+            print(f"Generator Chain: {pretty_print(gen_vec, idx_to_e)}")
 
-    # 3. Relationship (Torsion Check)
-    # If a cycle exists in Ker(d1) but its multiple exists in Im(d2),
-    # that is where your C2 comes from.
-    print("=== TORSION IDENTIFICATION ===")
-    print(f"Rank of Ker(d1) [Cycles]: {z1.rank()}")
-    print(f"Rank of Im(d2)  [Boundaries]: {b1.rank()}")
-    print(f"H1 Rank (Betti Number): {z1.rank() - b1.rank()}")
+            # Solve d2 * x = order * gen_vec
+            try:
+                # We want to find which squares (x) produce 'order' copies of the generator
+                x = d2.solve_right(order * gen_vec)
+                print(f"The {order}x multiple of this cycle is bounded by these squares:")
+                print(f"  {pretty_print(x, idx_to_s)}")
+            except (ValueError, RuntimeError):
+                print(f"  [Note] Could not find a unique square combination in ZZ.")
+
+    # 4. Free Part Analysis
+    free_rank = sum(1 for group, _ in h1 if not group.is_finite())
+    print(f"\nSummary: H1 has Betti number {free_rank} and {len(h1)-free_rank} torsion components.")
+
+
+def print_simplified_boundaries_with_sources(d2, e_map, s_map):
+    """
+    Finds a simplified basis for the image of d2 and identifies
+    which combination of commuting squares generates each basis vector.
+    """
+    idx_to_e = {i: e for e, i in e_map.items()}
+    idx_to_s = {i: s for s, i in s_map.items()}
+
+    def pretty_print(v, lookup):
+        parts = []
+        for i, val in enumerate(v):
+            if val == 0: continue
+            label = lookup.get(i, f"idx_{i}")
+            # Formatting: 1*x -> [x], -1*x -> -[x], 2*x -> 2*[x]
+            symbol = f"{val}*" if abs(val) != 1 else ("-" if val == -1 else "")
+            parts.append(f"{symbol}[{label}]")
+        if not parts: return "0"
+        return " + ".join(parts).replace("+ -", "- ")
+
+    # Compute the Hermite Normal Form basis for the column space
+    img_d2 = d2.column_space()
+    simplified_basis = img_d2.basis()
+
+    print(f"=== SIMPLIFIED BOUNDARIES AND THEIR SOURCES ===")
+    if not simplified_basis:
+        print("No boundaries found.")
+        return
+
+    for i, boundary_vec in enumerate(simplified_basis):
+        # 1. Format the boundary string (the Edges)
+        boundary_str = pretty_print(boundary_vec, idx_to_e)
+
+        # 2. Solve d2 * x = boundary_vec to find the squares
+        # x will be a vector where x[j] is the coefficient for Square_j
+        try:
+            source_vec = d2.solve_right(boundary_vec)
+            source_str = pretty_print(source_vec, idx_to_s)
+        except (ValueError, RuntimeError):
+            source_str = "Unknown combination (Inconsistent)"
+
+        print(f"B{i}: {boundary_str.ljust(30)} Source: {source_str}")
 
 
 def inspect_homology(g):
   d1 = matrix(ZZ, g.d_1.matrix)
   d2 = matrix(ZZ, g.d_2.matrix)
   C = ChainComplex({1: d1, 2: d2}, degree=-1)
-  print_homology_structures(d1, d2, g.vertex_to_index, g.edge_to_index, g.commuting_square_to_index)
+  print_homology_and_solve_torsion(C, d1, d2, g.vertex_to_index, g.edge_to_index, g.commuting_square_to_index)
+  print_simplified_boundaries(d2, g.edge_to_index)
+  print_simplified_boundaries_with_sources(d2, g.edge_to_index, g.commuting_square_to_index)
 
 
 def cohomology(g):
@@ -264,6 +285,8 @@ def verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C
   except:
     pass
 
+  print(f"Partitions E1={[str(e) for e in g.E1]}\tE2={[str(e) for e in g.E2]}")
+
   # Print homology
   print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
 
@@ -322,8 +345,8 @@ def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h
     g_H1_rank,  g_H1_torsion = parse_homology_rank(g_H1)
     gi_H1_rank, gi_H1_torsion = parse_homology_rank(gi_H1)
 
-    if verbose:
-      verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+    #if verbose:
+    #  verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
 
     ## if any H1 has torsion!
     # if g_H1_torsion > 0 or gi_H1_torsion > 0:
@@ -350,15 +373,15 @@ def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h
     #     exit()
 
 
-    # if any_torsion:
-    #   print("in any torsion")
-    #   if g_H1_torsion > 0 or gi_H1_torsion > 0:
-    #     if g_H1 != gi_H1:
-    #       print()
-    #       print("nonzero torsion and different H1")
-    #       if verbose:
-    #         verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
-    #       save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='just_diff_h1')
+    if any_torsion:
+      print("in any torsion")
+      if g_H1_torsion > 0 or gi_H1_torsion > 0:
+        if g_H1 != gi_H1:
+          print()
+          print("nonzero torsion and different H1")
+          if verbose:
+            verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+          save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='just_diff_h1')
 
     if only_og_torsion:
       if g_H1_torsion > 0 and gi_H1_torsion == 0:
@@ -384,15 +407,16 @@ def gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetri
       continue
 
     gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
-    calc_homologies(g, gi, verbose)
+    calc_homologies(g, gi, verbose, any_torsion=True)
 
 
 def premade_graphs(og, ig):
   g = TwoGraph(og)
-  gi = TwoGraph(ig)
   g_H0,  g_H1,  g_H2 = homology(g)
-  gi_H0, gi_H1, gi_H2 = homology(gi)
   g_C0,  g_C1,  g_C2 = cohomology(g)
+
+  gi = TwoGraph(ig)
+  gi_H0, gi_H1, gi_H2 = homology(gi)
   gi_C0, gi_C1, gi_C2 = cohomology(gi)
 
   print('~~~~~~ Homology of G and Insplit G ~~~~~~')
@@ -401,9 +425,12 @@ def premade_graphs(og, ig):
   # Print cohomology
   print_homology(g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2, True)
   print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  print('~~~~~ Inspecting the original graph ~~~~~~')
   inspect_homology(g)
+  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  print('~~~~~ Inspecting the insplit graph ~~~~~~~')
   inspect_homology(gi)
-
+  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
 def parse_matrix(M):
   if M is None:

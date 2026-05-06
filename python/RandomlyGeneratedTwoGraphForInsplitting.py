@@ -52,6 +52,7 @@ class RandomlyGeneratedTwoGraphForInsplitting(RandomlyGeneratedTwoGraph):
       self.v = v
       self.E1 = E1
       self.E2 = E2
+
       self.vertices = [i for i in range(n)]
       self.edges = {edge for edge in self.R_path_matrix.edges + self.B_path_matrix.edges}
       self.commuting_squares = commuting_squares
