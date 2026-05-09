@@ -19,6 +19,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
     if R is None:
       #R,B = self.gen()
       R,B = self.generate_adjacency_matrices(symmetric)
+      #R,B = self.gen_circulant_matrices()
       assert (R*B).all() == (B*R).all()
 
     self.R = R
@@ -176,6 +177,7 @@ class RandomlyGeneratedTwoGraph(TwoGraph):
         return self.gen(attempt+1)
 
   def gen_circulant_matrices(self):
+    print("Warning: Circulant matrices")
     # THESE SEEM TO NEVER BE ABLE TO INSPLIT
     try:
       # Get user input

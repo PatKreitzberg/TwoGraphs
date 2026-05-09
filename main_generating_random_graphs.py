@@ -5,6 +5,7 @@ from python.InsplitTwoGraph import InsplitTwoGraph
 from python.RandomlyGeneratedTwoGraphForInsplitting import RandomlyGeneratedTwoGraphForInsplitting
 
 from main_calculate_homology import homology, cohomology
+from main_print import print_homology, print_adj_matrices
 
 def verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2):
   print()
@@ -118,8 +119,27 @@ def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h
     g_H1_rank,  g_H1_torsion = parse_homology_rank(g_H1)
     gi_H1_rank, gi_H1_torsion = parse_homology_rank(gi_H1)
 
+    g_H2_rank,  g_H2_torsion = parse_homology_rank(g_H2)
+    gi_H2_rank, gi_H2_torsion = parse_homology_rank(gi_H2)
+
+    # if g_H2_rank > gi_H2_rank:
+    #   print("Found graph which has H2 rank > its insplit H2 rank")
+    #   print("g_H2_rank", g_H2_rank)
+    #   print("gi_H2_rank", gi_H2_rank)
+    #   verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+    #   save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='g_H2_rank_lt_gi_H2_rank_')
+    #   return True
+
     #if verbose:
     #  verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+
+    if (g_H1 != gi_H1) and (g_H2 != gi_H2):
+      verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+      save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='diff_h1_and_h2_')
+      print_adj_matrices(g.R,g.B)
+      print("Different homology!!")
+      return True
+
 
     ## if any H1 has torsion!
     # if g_H1_torsion > 0 or gi_H1_torsion > 0:
@@ -143,41 +163,45 @@ def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h
     #     verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
     #     save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='GH1_rank_gt_GIH1')
     #     print("Exiting because g_H1_rank > gi_H1_rank")
-    #     exit()
+    #     return True
 
 
-    if any_torsion:
-      print("in any torsion")
-      if g_H1_torsion > 0 or gi_H1_torsion > 0:
-        if g_H1 != gi_H1:
-          print()
-          print("nonzero torsion and different H1")
-          if verbose:
-            verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
-          save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='just_diff_h1')
+    # if any_torsion:
+    #   print("in any torsion")
+    #   if g_H1_torsion > 0 or gi_H1_torsion > 0:
+    #     if g_H1 != gi_H1:
+    #       print()
+    #       print("nonzero torsion and different H1")
+    #       if verbose:
+    #         verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+    #       save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='just_diff_h1')
 
-    if only_og_torsion:
-      if g_H1_torsion > 0 and gi_H1_torsion == 0:
-        print()
-        print("Diff; WOW torsion in g_H1 but not gi_H1!")
-        print(f"g.E1={[str(e) for e in g.E1]} and g.E2={[str(e) for e in g.E2]}")
-        verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
-        save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='wow-torsion-in-og-not-insplit')
-        print("exiting because WOW torsion in g_H1 but not gi_H1!")
-        return
-
+    # if only_og_torsion:
+    #   if g_H1_torsion > 0 and gi_H1_torsion == 0:
+    #     print()
+    #     print("Diff; WOW torsion in g_H1 but not gi_H1!")
+    #     print(f"g.E1={[str(e) for e in g.E1]} and g.E2={[str(e) for e in g.E2]}")
+    #     verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+    #     save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='wow-torsion-in-og-not-insplit')
+    #     print("exiting because WOW torsion in g_H1 but not gi_H1!")
+    #     return True
+    return False
 
 def gen_random_graph_and_calc_homology_and_insplit_homology(n, z, runs, symmetric, verbose, R=None, B=None, only_og_torsion=True):
-  print("n=", n, "z=", z)
+  print("n=", n, "z=", z, 'start',)
   for run in range(runs):
-    if run%50 == 0:
+    if run%500 == 0:
       print('run', run)
 
     g = RandomlyGeneratedTwoGraphForInsplitting(n,z, symmetric=symmetric)
 
     if not g.is_legit:
-      print_legit(g)
+      #print_legit(g)
       continue
 
     gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
-    calc_homologies(g, gi, verbose, any_torsion=True)
+    stop_running = calc_homologies(g, gi, verbose, any_torsion=True)
+    if stop_running:
+      print("Stopped early as we found result")
+      run = runs
+      break

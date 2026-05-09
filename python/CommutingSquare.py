@@ -6,15 +6,28 @@ class CommutingSquare:
     assert r1.r == r2.r
     assert s1.s == s2.s
 
+    if r2.label < r1.label:
+      # I want the labels to be like a f ~ e b not e b ~ a f
+      temp_r, temp_s = r1,s1
+      r1,s1 = r2,s2
+      r2,s2 = temp_r, temp_s
+
     self.__setattr__('alpha', r1)
 
     self.__setattr__('s1', s1)
     self.__setattr__('r1', r1)
     self.__setattr__('s2', s2)
     self.__setattr__('r2', r2)
+
+
+
+
     self.__setattr__('path1', (r1, s1))
     self.__setattr__('path2', (r2, s2))
-    self.__setattr__('label', '' + r1.label + ' ' + s1.label + ' ~ ' + r2.label + ' ' + s2.label + '')
+
+    l,r = sorted([(r1.label,s1.label), (r2.label,s2.label)])
+
+    self.__setattr__('label', '' + l[0] + ' ' + l[1] + ' ~ ' + r[0] + ' ' + r[1] + '')
     self.__setattr__('latex_label', '\substack{' + r1.label + ' ' + s1.label + r' \\ \sim \\ ' + r2.label + ' ' + s2.label + '}')
 
     assert self.path1[0].degree == self.path2[1].degree

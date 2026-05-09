@@ -3,10 +3,11 @@ import random
 import numpy as np
 from argparse import ArgumentParser
 
-from sage.all import vector, matrix, ZZ, ChainComplex
+from sage.all import vector, matrix, ZZ, ChainComplex, latex
 
 from main_generating_random_graphs import gen_random_graph_and_calc_homology_and_insplit_homology, calc_homologies
 from main_calculate_homology import homology, cohomology
+from main_print import print_homology
 
 from python.RandomlyGeneratedTwoGraphForInsplitting import RandomlyGeneratedTwoGraphForInsplitting
 from python.InsplitTwoGraph import InsplitTwoGraph
@@ -17,7 +18,7 @@ import math
 
 
 def tikzpicture(gfile):
-    degree_to_color = {1: "red, dashed", 2: "blue       "}
+    degree_to_color = {1: "red, dashed", 2: "blue           "}
     nl = '\n'
     g = TwoGraph(gfile)
     loop_angle_delta = 70
@@ -95,6 +96,12 @@ def print_homology_and_solve_torsion(C, d1, d2, v_map, e_map, s_map):
     for j, col in enumerate(d2.columns()):
         if not col.is_zero():
             print(f"Square [{idx_to_s[j]}] bounds: {pretty_print(col, idx_to_e)}")
+        else:
+            print(f"Square [{idx_to_s[j]}] bounds: 0")
+
+    print("\n=== 1-COMMUTING SQUARES (Kernel of d2) ===")
+    for i, b in enumerate(d2.right_kernel().basis()):
+        print(f"Cycle {i}: {pretty_print(b, idx_to_s)}")
 
     # 3. Dynamic Torsion Analysis
     print("\n=== DYNAMIC TORSION ANALYSIS ===")
@@ -165,38 +172,132 @@ def print_simplified_boundaries_with_sources(d2, e_map, s_map):
 
         print(f"B{i}: {boundary_str.ljust(30)} Source: {source_str}")
 
+def analyze_h1_generators(d1, d2, index_to_edge, index_to_square):
+    d1 = d1.change_ring(ZZ)
+    d2 = d2.change_ring(ZZ)
+
+    # 1. Compute Right Kernel (Cycles)
+    K = d1.right_kernel()
+    basis_ker = K.basis_matrix() # Original basis from Sage
+    k = K.rank()
+
+    # 2. Coordinate matrix A: basis_ker.T * A = d2
+    A = basis_ker.transpose().solve_right(d2)
+
+    # 3. Smith Normal Form: S = U * A * V
+    S, U, V = A.smith_form()
+
+    # 4. The "Smith Basis" for the Kernel
+    # The rows of U * basis_ker provide the basis for ker(d1)
+    # that corresponds directly to the rows of S.
+    smith_basis_ker = U * basis_ker
+
+    # 1. Check if the square boundaries are actually cycles
+    boundaries = d2.columns()
+    for i, b in enumerate(boundaries):
+        if not (d1 * b).is_zero():
+            print(f"Square index {i} ({index_to_square[i]}) is NOT a cycle!")
+            print(f"d1 * boundary = {d1 * b}")
+
+    # 2. Check if the Smith Basis cycles are actually in the kernel
+    for i in range(smith_basis_ker.nrows()):
+        cycle = smith_basis_ker.row(i)
+        if not (d1 * cycle.column()).is_zero():
+            print(f"Smith Generator {i} is NOT in the kernel!")
+
+
+    print("### Analysis of Cycles and their Boundaries\n")
+
+    # We iterate through the rank of the kernel
+    for i in range(k):
+        # The cycle itself
+        current_cycle_vec = smith_basis_ker.row(i)
+        involved_edges = [
+            (index_to_edge[j], coeff)
+            for j, coeff in enumerate(current_cycle_vec) if coeff != 0
+        ]
+        cycle_desc = " + ".join([f"({c})*[{ed}]" for ed, c in involved_edges])
+
+        # Check if this cycle is canceled, torsion, or free
+        # This is determined by the diagonal of S (only exists up to rank of A)
+        if i < A.rank():
+            invariant_factor = S[i, i]
+
+            # Find which squares bound this cycle via V
+            square_combination = V.column(i)
+            involved_squares = [
+                (index_to_square[j], coeff)
+                for j, coeff in enumerate(square_combination) if coeff != 0
+            ]
+            square_desc = " + ".join([f"({c})*[{sq}]" for sq, c in involved_squares])
+
+            if invariant_factor == 1:
+                print(f"--- GENERATOR {i+1} (CANCELED) ---")
+                print(f"Cycle:    {cycle_desc}")
+                print(f"Killed by: {square_desc}\n")
+            else:
+                print(f"--- GENERATOR {i+1} (TORSION Z/{invariant_factor}Z) ---")
+                print(f"Cycle:    {cycle_desc}")
+                print(f"Boundary: {invariant_factor} * Cycle = {square_desc}\n")
+        else:
+            print(f"--- GENERATOR {i+1} (FREE / UNBOUNDED) ---")
+            print(f"Cycle:    {cycle_desc}\n")
+
+
+
+
+def calculate_and_print_h1(d1, d2):
+    d1 = d1.change_ring(ZZ)
+    d2 = d2.change_ring(ZZ)
+
+    # Check boundary condition explicitly
+    product = d1 * d2
+    if not product.is_zero():
+        print("Boundary condition failed! d1 * d2 = ")
+        print(product)
+        return
+
+    # Use RIGHT kernel for standard homology (column vector convention)
+    K = d1.right_kernel()
+    basis_ker = K.basis_matrix() # Rows are the basis vectors
+    k = K.rank()
+
+    try:
+        # Solve (basis_ker.T) * X = d2
+        # This finds coordinates of d2's columns in terms of the kernel basis
+        A = basis_ker.transpose().solve_right(d2)
+    except ValueError:
+        print("Columns of d2 are not in the right kernel of d1.")
+        return
+
+    S, U, V = A.smith_form()
+
+    assert S == U*A*V
+
+    # Extract Homology
+    r = A.rank()
+    free_rank = k - r
+    diag = [S[i,i] for i in range(min(S.nrows(), S.ncols()))]
+    torsion = [d for d in diag if d > 1]
+
+    # LaTeX Formatting
+    parts = []
+    if free_rank > 0: parts.append(f"\\mathbb{{Z}}^{{{free_rank}}}")
+    for t in torsion: parts.append(f"\\mathbb{{Z}}/{t}\\mathbb{{Z}}")
+    h1_latex = " \\oplus ".join(parts) if parts else "0"
+
+    print("### Smith Normal Form (S)")
+    print(f"$$\nS = {latex(S)}\n$$")
+    print("\n### Homology Group")
+    print(f"$$H_1 \cong {h1_latex}$$")
+
+
 def inspect_homology(g):
   d1 = matrix(ZZ, g.d_1.matrix)
   d2 = matrix(ZZ, g.d_2.matrix)
   C = ChainComplex({1: d1, 2: d2}, degree=-1)
   print_homology_and_solve_torsion(C, d1, d2, g.vertex_to_index, g.edge_to_index, g.commuting_square_to_index)
-  print_simplified_boundaries(d2, g.edge_to_index)
   print_simplified_boundaries_with_sources(d2, g.edge_to_index, g.commuting_square_to_index)
-
-
-
-def print_homology(H0,H1,H2, i_H0, i_H1, i_H2,is_cohomology):
-  if is_cohomology:
-    print(f"Cohomology Graph\tInsplit: \nH_0 {H0}\t\t{i_H0} \nH_1 {H1}\t\t{i_H1} \nH_2 {H2}\t\t{i_H2}")
-  else:
-    print(f"Homology Graph\tInsplit: \nH^0 {H0}\t\t{i_H0} \nH^1 {H1}\t\t{i_H1} \nH^2 {H2}\t\t{i_H2}")
-  print()
-
-def print_adj_matrices(R,B):
-  print("Red matrix")
-  for r in R:
-    print(r)
-  print()
-  print("Blue matrix")
-  for r in B:
-    print(r)
-  print()
-
-
-
-
-
-
 
 
 def premade_graphs(og, ig):
@@ -208,18 +309,31 @@ def premade_graphs(og, ig):
   gi_H0, gi_H1, gi_H2 = homology(gi)
   gi_C0, gi_C1, gi_C2 = cohomology(gi)
 
-  print('~~~~~~ Homology of G and Insplit G ~~~~~~')
-  # Print homology
-  print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
-  # Print cohomology
-  print_homology(g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2, True)
-  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-  print('~~~~~ Inspecting the original graph ~~~~~~')
-  inspect_homology(g)
-  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-  print('~~~~~ Inspecting the insplit graph ~~~~~~~')
-  inspect_homology(gi)
-  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  # print('~~~~~~ Homology of G and Insplit G ~~~~~~')
+  # # Print homology
+  # print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
+  # # Print cohomology
+  # print_homology(g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2, True)
+  # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  # print('~~~~~ Inspecting the original graph ~~~~~~')
+  # inspect_homology(g)
+  # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  # print('~~~~~ Inspecting the insplit graph ~~~~~~~')
+  # inspect_homology(gi)
+  # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+
+  print("Smith for insplit")
+  gid1,gid2 = matrix(ZZ, gi.d_1.matrix), matrix(ZZ, gi.d_2.matrix)
+  print("Product\n", gid1*gid2)
+  print("Gid1\n", gid1)
+  print("Gid2\n", gid2)
+  # --- Preparation for your 2-graph data ---
+  # index_to_edge = {0: 'e1', 1: 'e2', ...}
+  # index_to_square = {0: 'sq_ab_cd', 1: 'sq_gh_ij', ...}
+  analyze_h1_generators(gid1, gid2, gi.index_to_edge, gi.index_to_commuting_square)
+
+
+
 
 def parse_matrix(M):
   if M is None:
@@ -284,39 +398,50 @@ if __name__ == "__main__":
     premade_graphs(og_file, insplit_file)
 
   elif args.command == 'matrices':
-    print("arg.R is", args.R)
-    print("arg.B is", args.B)
-    verbose = args.verbose
-    R = parse_matrix(args.R)
-    B = parse_matrix(args.B)
-    assert (R is None and B is None) or (type(R) is list and type(B) is list)
+    for run  in range(100):
+      print("arg.R is", args.R)
+      print("arg.B is", args.B)
+      verbose = args.verbose
+      R = parse_matrix(args.R)
+      B = parse_matrix(args.B)
+      assert (R is None and B is None) or (type(R) is list and type(B) is list)
 
-    n = len(R)
-    assert len(R) == len(B)
-    for i in range(len(R)):
-      assert len(R[i]) == len(B[i])
-      assert len(R[i]) == n
+      n = len(R)
+      assert len(R) == len(B)
+      for i in range(len(R)):
+        assert len(R[i]) == len(B[i])
+        assert len(R[i]) == n
 
-    Rmat = matrix(R)
-    Bmat = matrix(B)
-    assert Rmat*Bmat == Bmat*Rmat
+      Rmat = matrix(R)
+      Bmat = matrix(B)
+      assert Rmat*Bmat == Bmat*Rmat
 
-    z = 0
-    for mat in (R,B):
-      for row in mat:
-        rm = max(row)
-        z = max(rm,z)
-    assert z > 0
+      z = 0
+      for mat in (R,B):
+        for row in mat:
+          rm = max(row)
+          z = max(rm,z)
+      assert z > 0
 
-    print(f"Creating graph with R={R} and B={B}")
-    g = RandomlyGeneratedTwoGraphForInsplitting(n,z,R=R,B=B)
-    if not g.is_legit:
-      print_legit(g)
-      exit()
+      print(f"Creating graph with R={R} and B={B}")
+      g = RandomlyGeneratedTwoGraphForInsplitting(n,z,R=R,B=B)
+      if not g.is_legit:
+        print_legit(g)
+        exit()
 
-    gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
+      gi = InsplitTwoGraph(g, g.v, g.E1, g.E2)
+      calc_homologies(g, gi, True)
+      print("Inspecting OG")
+      inspect_homology(g)
+      print("Inspecting Insplit")
+      inspect_homology(gi)
 
-    inspect_homology(g)
-    calc_homologies(g, gi, True)
-    print("returning early")
-    exit()
+      print("G edges")
+      for e in g.edges:
+        print(f'{e}: {e.s} -> {e.r}')
+      print("GI edges")
+      for e in gi.edges:
+        print(f'{e}: {e.s} -> {e.r}')
+      g_H0, g_H1, g_H2 = homology(g)
+      gi_H0, gi_H1, gi_H2 = homology(gi)
+      print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
