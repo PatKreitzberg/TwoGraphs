@@ -122,6 +122,14 @@ def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h
     g_H2_rank,  g_H2_torsion = parse_homology_rank(g_H2)
     gi_H2_rank, gi_H2_torsion = parse_homology_rank(gi_H2)
 
+    if ('C' in str(g_C0)) or  ('C' in str(g_C1)):
+      verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+
+    if g_H2_rank != gi_H2_rank or g_H2_rank > gi_H2_rank:
+      #verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+      print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
+      return True
+
     # if g_H2_rank > gi_H2_rank:
     #   print("Found graph which has H2 rank > its insplit H2 rank")
     #   print("g_H2_rank", g_H2_rank)
@@ -133,12 +141,12 @@ def calc_homologies(g, gi, verbose, only_og_torsion=True, any_torsion=False, g_h
     #if verbose:
     #  verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
 
-    if (g_H1 != gi_H1) and (g_H2 != gi_H2):
-      verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
-      save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='diff_h1_and_h2_')
-      print_adj_matrices(g.R,g.B)
-      print("Different homology!!")
-      return True
+    # if (g_H1 != gi_H1) and (g_H2 != gi_H2):
+    #   verbose_output(g, gi, g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2)
+    #   save_to_file(g, g_H0, g_H1, g_H2, gi, gi_H0, gi_H1, gi_H2, prepend='diff_h1_and_h2_')
+    #   print_adj_matrices(g.R,g.B)
+    #   print("Different homology!!")
+    #   return True
 
 
     ## if any H1 has torsion!

@@ -6,8 +6,9 @@ from argparse import ArgumentParser
 from sage.all import vector, matrix, ZZ, ChainComplex, latex
 
 from main_generating_random_graphs import gen_random_graph_and_calc_homology_and_insplit_homology, calc_homologies
-from main_calculate_homology import homology, cohomology
+from main_calculate_homology import homology, cohomology, check_cohomology
 from main_print import print_homology
+from claude_analysis import *
 
 from python.RandomlyGeneratedTwoGraphForInsplitting import RandomlyGeneratedTwoGraphForInsplitting
 from python.InsplitTwoGraph import InsplitTwoGraph
@@ -186,6 +187,7 @@ def analyze_h1_generators(d1, d2, index_to_edge, index_to_square):
 
     # 3. Smith Normal Form: S = U * A * V
     S, U, V = A.smith_form()
+    V = V.change_ring(ZZ)
 
     # 4. The "Smith Basis" for the Kernel
     # The rows of U * basis_ker provide the basis for ker(d1)
@@ -210,40 +212,54 @@ def analyze_h1_generators(d1, d2, index_to_edge, index_to_square):
 
     # We iterate through the rank of the kernel
     for i in range(k):
-        # The cycle itself
-        current_cycle_vec = smith_basis_ker.row(i)
-        involved_edges = [
-            (index_to_edge[j], coeff)
-            for j, coeff in enumerate(current_cycle_vec) if coeff != 0
-        ]
-        cycle_desc = " + ".join([f"({c})*[{ed}]" for ed, c in involved_edges])
+        invariant_factor = S[i, i] if (i < S.nrows() and i < S.ncols()) else 0
 
-        # Check if this cycle is canceled, torsion, or free
-        # This is determined by the diagonal of S (only exists up to rank of A)
-        if i < A.rank():
-            invariant_factor = S[i, i]
-
-            # Find which squares bound this cycle via V
-            square_combination = V.column(i)
-            involved_squares = [
-                (index_to_square[j], coeff)
-                for j, coeff in enumerate(square_combination) if coeff != 0
+        if invariant_factor == 0:
+            # Free generators: use smith_basis_ker (no boundary involved)
+            current_cycle_vec = smith_basis_ker.row(i)
+            involved_edges = [
+                (index_to_edge[j], coeff)
+                for j, coeff in enumerate(current_cycle_vec) if coeff != 0
             ]
-            square_desc = " + ".join([f"({c})*[{sq}]" for sq, c in involved_squares])
-
-            if invariant_factor == 1:
-                print(f"--- GENERATOR {i+1} (CANCELED) ---")
-                print(f"Cycle:    {cycle_desc}")
-                print(f"Killed by: {square_desc}\n")
-            else:
-                print(f"--- GENERATOR {i+1} (TORSION Z/{invariant_factor}Z) ---")
-                print(f"Cycle:    {cycle_desc}")
-                print(f"Boundary: {invariant_factor} * Cycle = {square_desc}\n")
-        else:
+            cycle_desc = " + ".join([f"({c})*[{ed}]" for ed, c in involved_edges])
             print(f"--- GENERATOR {i+1} (FREE / UNBOUNDED) ---")
             print(f"Cycle:    {cycle_desc}\n")
 
+        elif invariant_factor == 1:
+            # The actual cycle killed by this square combination IS d2 * V[:,i]
+            sq_col = V.column(i)
+            actual_cycle = d2 * sq_col
+            involved_edges = [
+                (index_to_edge[j], coeff)
+                for j, coeff in enumerate(actual_cycle) if coeff != 0
+            ]
+            cycle_desc = " + ".join([f"({c})*[{ed}]" for ed, c in involved_edges])
+            involved_squares = [
+                (index_to_square[j], coeff)
+                for j, coeff in enumerate(sq_col) if coeff != 0
+            ]
+            square_desc = " + ".join([f"({c})*[{sq}]" for sq, c in involved_squares])
+            print(f"--- GENERATOR {i+1} (CANCELED) ---")
+            print(f"Cycle:    {cycle_desc}")
+            print(f"Killed by: {square_desc}\n")
 
+        else:
+            # Torsion: similar — actual cycle is d2 * V[:,i] / invariant_factor
+            sq_col = V.column(i)
+            actual_cycle = d2 * sq_col  # this equals invariant_factor * generator
+            involved_edges = [
+                (index_to_edge[j], coeff // invariant_factor)
+                for j, coeff in enumerate(actual_cycle) if coeff != 0
+            ]
+            cycle_desc = " + ".join([f"({c})*[{ed}]" for ed, c in involved_edges])
+            involved_squares = [
+                (index_to_square[j], coeff)
+                for j, coeff in enumerate(sq_col) if coeff != 0
+            ]
+            square_desc = " + ".join([f"({c})*[{sq}]" for sq, c in involved_squares])
+            print(f"--- GENERATOR {i+1} (TORSION Z/{invariant_factor}Z) ---")
+            print(f"Cycle:    {cycle_desc}")
+            print(f"Boundary: {invariant_factor} * Cycle = {square_desc}\n")
 
 
 def calculate_and_print_h1(d1, d2):
@@ -299,6 +315,58 @@ def inspect_homology(g):
   print_homology_and_solve_torsion(C, d1, d2, g.vertex_to_index, g.edge_to_index, g.commuting_square_to_index)
   print_simplified_boundaries_with_sources(d2, g.edge_to_index, g.commuting_square_to_index)
 
+def inspect_cohomology(g):
+  d1 = matrix(ZZ, g.d_1.matrix)
+  d2 = matrix(ZZ, g.d_2.matrix)
+  C = ChainComplex({1: d1, 2: d2}, degree=-1).dual()
+  print_homology_and_solve_torsion(C, d1, d2, g.vertex_to_index, g.edge_to_index, g.commuting_square_to_index)
+  print_simplified_boundaries_with_sources(d2, g.edge_to_index, g.commuting_square_to_index)
+
+
+def analyze_homology_gemini(d1, d2, index_to_edge, index_to_square):
+    """
+    Analyzes the relationship between ker(d1) and img(d2).
+    FROM GEMINI
+    """
+    print("## 1. Generators of the Image of d2 (Cycles that bound squares)")
+    # The image is spanned by the columns of d2
+    img_d2_basis = d2.column_space().basis()
+
+    for i, vec in enumerate(img_d2_basis):
+        edges = [f"{vec[j]}*({index_to_edge[j]})" for j in range(len(vec)) if vec[j] != 0]
+        print(f"  Generator {i}: {' + '.join(edges)}")
+
+    print("\n## 2. Generators of the Kernel of d1 (All 1-cycles)")
+    ker_d1_basis = d1.right_kernel().basis()
+
+    for i, vec in enumerate(ker_d1_basis):
+        edges = [f"{vec[j]}*({index_to_edge[j]})" for j in range(len(vec)) if vec[j] != 0]
+        print(f"  Generator {i}: {' + '.join(edges)}")
+
+    print("\n## 3. Kernel/Image Cancellation Analysis")
+    print("Checking which 1-cycles are boundaries of 2-cells (squares)...")
+
+    for i, k_vec in enumerate(ker_d1_basis):
+        try:
+            # Try to solve the system d2 * x = k_vec
+            # This finds how to represent the kernel vector using the squares
+            solution = d2.solve_right(k_vec)
+
+            # If successful, it means this cycle is 0 in homology (it's a boundary)
+            k_edges = [f"{k_vec[j]}*({index_to_edge[j]})" for j in range(len(k_vec)) if k_vec[j] != 0]
+            s_elements = [f"{solution[j]}*({index_to_square[j]})" for j in range(len(solution)) if solution[j] != 0]
+
+            print(f"\n[!] Kernel Generator {i} is CANCELED:")
+            print(f"    Cycle: {' + '.join(k_edges)}")
+            print(f"    is the boundary of squares: {' + '.join(s_elements)}")
+
+        except ValueError:
+            # If no solution exists, this generator represents a non-trivial homology class
+            k_edges = [f"{k_vec[j]}*({index_to_edge[j]})" for j in range(len(k_vec)) if k_vec[j] != 0]
+            print(f"\n[ ] Kernel Generator {i} PERSISTS (Non-trivial Homology):")
+            print(f"    Cycle: {' + '.join(k_edges)}")
+
+
 
 def premade_graphs(og, ig):
   g = TwoGraph(og)
@@ -309,18 +377,24 @@ def premade_graphs(og, ig):
   gi_H0, gi_H1, gi_H2 = homology(gi)
   gi_C0, gi_C1, gi_C2 = cohomology(gi)
 
-  # print('~~~~~~ Homology of G and Insplit G ~~~~~~')
-  # # Print homology
-  # print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
-  # # Print cohomology
-  # print_homology(g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2, True)
-  # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-  # print('~~~~~ Inspecting the original graph ~~~~~~')
-  # inspect_homology(g)
-  # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
-  # print('~~~~~ Inspecting the insplit graph ~~~~~~~')
-  # inspect_homology(gi)
-  # print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  print('~~~~~~ Homology of G and Insplit G ~~~~~~')
+  # Print homology
+  print_homology(g_H0, g_H1, g_H2, gi_H0, gi_H1, gi_H2, False)
+  # Print cohomology
+  print_homology(g_C0, g_C1, g_C2, gi_C0, gi_C1, gi_C2, True)
+  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  print('~~~~~ Inspecting the original graph ~~~~~~')
+  print("d1")
+  print(g.d_1.matrix)
+  print("d2")
+  print(g.d_2.matrix)
+  inspect_cohomology(g)
+  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  print('~~~~~ Inspecting the insplit graph ~~~~~~~')
+  inspect_cohomology(gi)
+  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  return
+
 
   print("Smith for insplit")
   gid1,gid2 = matrix(ZZ, gi.d_1.matrix), matrix(ZZ, gi.d_2.matrix)
@@ -330,9 +404,15 @@ def premade_graphs(og, ig):
   # --- Preparation for your 2-graph data ---
   # index_to_edge = {0: 'e1', 1: 'e2', ...}
   # index_to_square = {0: 'sq_ab_cd', 1: 'sq_gh_ij', ...}
-  analyze_h1_generators(gid1, gid2, gi.index_to_edge, gi.index_to_commuting_square)
+  #analyze_h1_generators(gid1, gid2, gi.index_to_edge, gi.index_to_commuting_square)
+  #analyze_h1_generators(gid1, gid2, gi.index_to_edge, gi.index_to_commuting_square)
 
-
+  print('~~~~~ GEMINI ANALYSIS ~~~~~~~')
+  analyze_homology_gemini(gid1, gid2, gi.index_to_edge, gi.index_to_commuting_square)
+  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
+  print('~~~~~ CLAUDE ANALYSIS ~~~~~~~')
+  analyze_2graph_homology(gid1, gid2, gi.index_to_edge, gi.index_to_commuting_square)
+  print('~~~~~~~~~~~~~~~~~~~~~~~~~~~~')
 
 
 def parse_matrix(M):
